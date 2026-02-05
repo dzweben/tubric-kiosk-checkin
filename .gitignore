@@ -1,0 +1,14 @@
+## Python
+.venv/
+__pycache__/
+*.pyc
+
+## OS
+.DS_Store
+
+## Exports
+db_exports/*
+!db_exports/deidentified_visits.csv
+
+## Safety: avoid any CSVs inside app folder (PHI risk)
+tubric_kiosk/**/*.csv
