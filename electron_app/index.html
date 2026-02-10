@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUBRIC Check-In</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <main class="kiosk">
+      <section class="card" id="screen-welcome">
+        <header class="brand">
+          <div class="brand-title">TUBRIC Check-In</div>
+          <div class="brand-subtitle">Temple University Brain Research Imaging Center</div>
+        </header>
+
+        <h1>Welcome to TUBRIC</h1>
+        <p class="lead">
+          Please follow the prompts to check in for your visit today.
+        </p>
+        <p class="muted">
+          If you are a parent/guardian completing this, please enter the
+          participant's information.
+        </p>
+        <div class="actions">
+          <button class="btn primary" data-next="screen-consent">Start Check-In</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="screen-consent">
+        <header class="brand">
+          <div class="brand-title">TUBRIC Check-In</div>
+          <div class="brand-subtitle">Contact Permission</div>
+        </header>
+        <h2>May we contact you about future research opportunities?</h2>
+        <p class="muted">We will save your information regardless of your choice.</p>
+        <div class="actions split">
+          <button class="btn primary" data-consent="Yes">Yes, contact me</button>
+          <button class="btn secondary" data-consent="No">No, do not contact me</button>
+        </div>
+        <button class="btn ghost" data-back>← Back</button>
+      </section>
+
+      <section class="card hidden" id="screen-role">
+        <header class="brand">
+          <div class="brand-title">TUBRIC Check-In</div>
+          <div class="brand-subtitle">Who is checking in?</div>
+        </header>
+        <h2>Please select who is completing this form.</h2>
+        <p class="muted">If you are a parent/guardian, enter the participant's information on the next screen.</p>
+        <div class="actions stack">
+          <button class="btn primary" data-role="participant">I am the participant</button>
+          <button class="btn secondary" data-role="guardian">I am a parent/guardian</button>
+        </div>
+        <button class="btn ghost" data-back>← Back</button>
+      </section>
+
+      <section class="card hidden" id="screen-info">
+        <header class="brand">
+          <div class="brand-title">TUBRIC Check-In</div>
+          <div class="brand-subtitle">Participant Information</div>
+        </header>
+        <h2>Participant Information</h2>
+        <p class="muted" id="info-subtitle">Please enter your information below.</p>
+
+        <form class="form" id="info-form">
+          <label>
+            First Name
+            <input type="text" id="firstName" autocomplete="off" />
+          </label>
+          <label>
+            Last Name
+            <input type="text" id="lastName" autocomplete="off" />
+          </label>
+          <label>
+            Date of Birth <span class="hint">(MM-DD-YYYY)</span>
+            <input type="text" id="dob" inputmode="numeric" autocomplete="off" />
+          </label>
+          <label>
+            Email Address
+            <input type="email" id="email" autocomplete="off" />
+          </label>
+          <label>
+            Phone Number <span class="hint">(555-555-5555)</span>
+            <input type="tel" id="phone" inputmode="numeric" autocomplete="off" />
+          </label>
+        </form>
+
+        <div class="note">Please provide both email and phone number.</div>
+        <div class="error" id="info-error"></div>
+
+        <div class="actions">
+          <button class="btn primary" id="info-continue">Continue</button>
+          <button class="btn ghost" data-back>← Back</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="screen-study">
+        <header class="brand">
+          <div class="brand-title">TUBRIC Check-In</div>
+          <div class="brand-subtitle">Today's Visit</div>
+        </header>
+        <h2>TUBRIC Study Code</h2>
+        <p class="muted">Please have the research assistant fill in this information.</p>
+        <input class="study-input" type="text" id="studyCode" autocomplete="off" />
+        <div class="error" id="study-error"></div>
+        <div class="actions">
+          <button class="btn primary" id="finish">Finish Check-In</button>
+          <button class="btn ghost" data-back>← Back</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="screen-done">
+        <header class="brand">
+          <div class="brand-title">TUBRIC Check-In</div>
+          <div class="brand-subtitle">All Set</div>
+        </header>
+        <h2>You're all set.</h2>
+        <p class="lead">Thank you for checking in.</p>
+        <p class="muted">Please let the research assistant know you have completed the check-in process.</p>
+        <div class="actions">
+          <button class="btn primary" id="done">Done</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

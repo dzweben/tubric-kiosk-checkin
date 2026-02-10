@@ -71,6 +71,14 @@ crash_reports/
 Icon?
 
 ############################
+# ⚡ ELECTRON
+############################
+
+electron_app/node_modules/
+electron_app/dist/
+electron_app/out/
+
+############################
 # 📤 EXPORTS (DE-ID ONLY)
 ############################
 
