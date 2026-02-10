@@ -21,12 +21,14 @@ COLORS = {
     'text_light': '#64748b',
     'border': '#e2e8f0',
     'accent': '#0ea5e9',
+    'shadow': '#cbd5e1',
 }
 
 LEGACY_DATA_FILE = os.path.join(os.path.dirname(__file__), "tubric_profiles.json")
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # /.../TUBRIC/Database
 PRIVATE_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "ID-data"))     # /.../TUBRIC/ID-data
+LOGO_PATH = os.path.join(BASE_DIR, "sourcephoto", "logo.png")
 
 FULL_EXPORT_DIR = os.path.join(PRIVATE_DIR, "db_exports")
 DEID_EXPORT_DIR = os.path.join(BASE_DIR, "db_exports")
@@ -107,6 +109,22 @@ def write_csv(path, fieldnames, rows):
         writer.writeheader()
         for r in rows:
             writer.writerow(r)
+
+
+def load_logo(max_width=260, max_height=90):
+    if not os.path.exists(LOGO_PATH):
+        return None
+    try:
+        img = tk.PhotoImage(file=LOGO_PATH)
+        w, h = img.width(), img.height()
+        if w == 0 or h == 0:
+            return None
+        scale = max(1, int(max(w / max_width, h / max_height)))
+        if scale > 1:
+            img = img.subsample(scale, scale)
+        return img
+    except Exception:
+        return None
 
 
 def _split_list(value: str):
@@ -653,7 +671,7 @@ class StyledButton(tk.Button):
     def __init__(self, parent, text, command, style="primary", **kwargs):
         if style == "primary":
             bg = COLORS['primary']
-            fg = "black"
+            fg = "white"
             active_bg = COLORS['primary_dark']
         elif style == "secondary":
             bg = COLORS['card']
@@ -721,32 +739,39 @@ class BaseFrame(tk.Frame):
         pass
 
 
+def build_card(parent, inner_padx=80, inner_pady=60):
+    card = tk.Frame(parent, bg=COLORS['card'], relief="flat", borderwidth=0)
+    card.pack(padx=60, pady=40)
+
+    # Subtle drop shadow
+    shadow = tk.Frame(card, bg=COLORS['shadow'], relief="flat")
+    shadow.place(x=5, y=5, relwidth=1, relheight=1)
+    card.lift()
+
+    # Accent top bar
+    accent = tk.Frame(card, bg=COLORS['accent'], height=4)
+    accent.pack(fill="x", side="top")
+
+    inner = tk.Frame(card, bg=COLORS['card'], padx=inner_padx, pady=inner_pady)
+    inner.pack()
+    return inner
+
+
 class WelcomeFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
-
-        # Card container
-        card = tk.Frame(self.content, bg=COLORS['card'], relief="flat", borderwidth=0)
-        card.pack(padx=60, pady=40)
-        
-        # Add subtle shadow effect with border
-        shadow = tk.Frame(card, bg=COLORS['border'], relief="flat")
-        shadow.place(x=4, y=4, relwidth=1, relheight=1)
-        card.lift()
-        
-        inner = tk.Frame(card, bg=COLORS['card'], padx=80, pady=60)
-        inner.pack()
+        inner = build_card(self.content, inner_padx=80, inner_pady=60)
 
         # Header with icon
         header_frame = tk.Frame(inner, bg=COLORS['card'])
         header_frame.pack(pady=(0, 20))
-        
-        tk.Label(
-            header_frame,
-            text="👋",
-            bg=COLORS['card'],
-            font=("Helvetica", 48)
-        ).pack()
+
+        if controller.logo_image:
+            tk.Label(
+                header_frame,
+                image=controller.logo_image,
+                bg=COLORS['card'],
+            ).pack(pady=(0, 8))
         
         tk.Label(
             header_frame,
@@ -755,6 +780,14 @@ class WelcomeFrame(BaseFrame):
             fg=COLORS['text'],
             font=("Helvetica", 32, "bold"),
         ).pack(pady=(10, 0))
+
+        tk.Label(
+            header_frame,
+            text="Temple University Brain Research Imaging Center",
+            bg=COLORS['card'],
+            fg=COLORS['text_light'],
+            font=("Helvetica", 14),
+        ).pack(pady=(6, 0))
 
         # Subtitle
         tk.Label(
@@ -783,8 +816,7 @@ class ConsentFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
 
-        card = tk.Frame(self.content, bg=COLORS['card'], padx=80, pady=60)
-        card.pack(padx=60, pady=40)
+        card = build_card(self.content, inner_padx=80, inner_pady=60)
 
         tk.Label(
             card,
@@ -850,8 +882,7 @@ class NoConsentFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
 
-        card = tk.Frame(self.content, bg=COLORS['card'], padx=80, pady=60)
-        card.pack(padx=60, pady=40)
+        card = build_card(self.content, inner_padx=80, inner_pady=60)
 
         tk.Label(
             card,
@@ -894,8 +925,7 @@ class RoleFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
 
-        card = tk.Frame(self.content, bg=COLORS['card'], padx=80, pady=60)
-        card.pack(padx=60, pady=40)
+        card = build_card(self.content, inner_padx=80, inner_pady=60)
 
         tk.Label(
             card,
@@ -946,8 +976,7 @@ class ParticipantInfoFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
 
-        card = tk.Frame(self.content, bg=COLORS['card'], padx=70, pady=50)
-        card.pack(padx=60, pady=40)
+        card = build_card(self.content, inner_padx=70, inner_pady=50)
 
         tk.Label(
             card,
@@ -1063,7 +1092,7 @@ class ParticipantInfoFrame(BaseFrame):
         
         tk.Label(
             note_frame,
-            text="📌 Please provide both email and phone number.",
+            text="Please provide both email and phone number.",
             bg=COLORS['primary_light'],
             fg=COLORS['primary_dark'],
             font=("Helvetica", 12),
@@ -1151,8 +1180,7 @@ class StudyCodeFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
 
-        card = tk.Frame(self.content, bg=COLORS['card'], padx=80, pady=60)
-        card.pack(padx=60, pady=40)
+        card = build_card(self.content, inner_padx=80, inner_pady=60)
 
         tk.Label(
             card,
@@ -1219,8 +1247,7 @@ class DoneFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
 
-        card = tk.Frame(self.content, bg=COLORS['card'], padx=80, pady=60)
-        card.pack(padx=60, pady=40)
+        card = build_card(self.content, inner_padx=80, inner_pady=60)
 
         tk.Label(
             card,
@@ -1270,6 +1297,8 @@ class KioskApp(tk.Tk):
 
         self.attributes("-fullscreen", True)
         self.bind("<Escape>", lambda e: self._confirm_exit())
+
+        self.logo_image = load_logo()
 
         maybe_migrate_legacy_to_csv()
         self.guid_db = load_guid_db()
