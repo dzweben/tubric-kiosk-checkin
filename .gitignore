@@ -20,6 +20,9 @@ data/
 .env.*
 *.env
 
+# REDCap API key
+RDCAPI/key.txt
+
 ############################
 # 🐍 PYTHON
 ############################
