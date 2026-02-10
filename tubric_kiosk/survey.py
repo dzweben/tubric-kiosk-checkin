@@ -9,26 +9,36 @@ import csv
 APP_TITLE = "TUBRIC Check-In"
 SITE_NAME = "TUBRIC"
 
-# Professional Color Palette
+# Visual Theme
 COLORS = {
-    'primary': '#2563eb',      # Blue
-    'primary_dark': '#1e40af',
-    'primary_light': '#dbeafe',
-    'success': '#059669',
-    'background': '#f8fafc',
+    'primary': '#111827',      # Charcoal
+    'primary_dark': '#0b1220',
+    'primary_light': '#e5e7eb',
+    'success': '#16a34a',
+    'background': '#f4f6fb',
     'card': '#ffffff',
-    'text': '#1e293b',
-    'text_light': '#64748b',
-    'border': '#e2e8f0',
-    'accent': '#0ea5e9',
-    'shadow': '#cbd5e1',
+    'text': '#0f172a',
+    'text_light': '#475569',
+    'border': '#e5e7eb',
+    'accent': '#9d2235',       # Temple red
+    'accent_light': '#f8e5e9',
+    'shadow': '#d7dde7',
 }
+
+FONT_DISPLAY = ("Helvetica Neue", 30, "bold")
+FONT_TITLE = ("Helvetica Neue", 22, "bold")
+FONT_SUBTITLE = ("Helvetica Neue", 16)
+FONT_BODY = ("Helvetica Neue", 14)
+FONT_LABEL = ("Helvetica Neue", 13, "bold")
+FONT_BUTTON = ("Helvetica Neue", 15, "bold")
+FONT_SMALL = ("Helvetica Neue", 12)
 
 LEGACY_DATA_FILE = os.path.join(os.path.dirname(__file__), "tubric_profiles.json")
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # /.../TUBRIC/Database
 PRIVATE_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "ID-data"))     # /.../TUBRIC/ID-data
 LOGO_PATH = os.path.join(BASE_DIR, "sourcephoto", "logo.png")
+SHOW_LOGO = False
 
 FULL_EXPORT_DIR = os.path.join(PRIVATE_DIR, "db_exports")
 DEID_EXPORT_DIR = os.path.join(BASE_DIR, "db_exports")
@@ -111,8 +121,8 @@ def write_csv(path, fieldnames, rows):
             writer.writerow(r)
 
 
-def load_logo(max_width=260, max_height=90):
-    if not os.path.exists(LOGO_PATH):
+def load_logo(max_width=520, max_height=120):
+    if not SHOW_LOGO or not os.path.exists(LOGO_PATH):
         return None
     try:
         img = tk.PhotoImage(file=LOGO_PATH)
@@ -464,85 +474,169 @@ def export_deidentified_visits(participants_db):
     )
 
 
-def maybe_migrate_legacy():
+def _python_executable():
+    exe = os.environ.get("VIRTUAL_ENV")
+    if exe:
+        candidate = os.path.join(exe, "bin", "python")
+        if os.path.exists(candidate):
+            return candidate
+    return "python3"
+
+
+def auto_push_deidentified():
     """
-    One-time migration from legacy single-file storage to two-db layout.
-    Only runs if new DBs don't exist and legacy file does.
+    Pushes de-identified CSV to the Git repo at BASE_DIR.
+    Safe to ignore failures (e.g., no remote, auth not set).
     """
-    if os.path.exists(GUID_DB_FILE) or os.path.exists(PARTICIPANTS_DB_FILE):
-        return
-    if not os.path.exists(LEGACY_DATA_FILE):
-        return
+    try:
+        import subprocess
+        script = os.path.join(os.path.dirname(__file__), "push_deidentified_to_git.py")
+        subprocess.run(
+            [_python_executable(), script, BASE_DIR, "--file", DEID_EXPORT_FILE],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        pass
 
-    legacy = load_json_file(LEGACY_DATA_FILE, {"profiles": []})
-    people = []
-    participants = []
 
-    for p in legacy.get("profiles", []):
-        guid = p.get("guid") or new_guid()
-        created_at = p.get("created_at") or now_iso()
+def submit_checkin(state, guid_db=None, participants_db=None):
+    """
+    Core save path used by both Tk UI and Electron.
+    Returns (guid, action, guid_db, participants_db).
+    """
+    if guid_db is None or participants_db is None:
+        maybe_migrate_legacy_to_csv()
+        guid_db = load_guid_db()
+        participants_db = load_participants_db()
 
-        # Build visits with explicit visit_number/date/time
-        visits = []
-        for idx, v in enumerate(p.get("visits", []), start=1):
-            visit_dt = v.get("visit_datetime") or now_iso()
-            visit_date = visit_dt.split("T")[0]
-            visit_time = visit_dt.split("T")[1] if "T" in visit_dt else ""
-            visits.append(
-                {
-                    "visit_number": idx,
-                    "visit_datetime": visit_dt,
-                    "visit_date": visit_date,
-                    "visit_time": visit_time,
-                    "tubric_study_code": v.get("tubric_study_code", ""),
-                    "consent_contact": v.get("consent_contact"),
-                    "entered_by": v.get("entered_by"),
-                }
-            )
+    s = state
 
+    dob = s.get("dob", "")
+    email = s.get("email", "")
+    phone = s.get("phone", "")
+
+    existing = find_person(
+        guid_db["people"],
+        dob=dob,
+        first_name=s.get("first_name", ""),
+        last_name=s.get("last_name", ""),
+        email=email,
+        phone=phone,
+    )
+
+    visit_datetime = now_iso()
+    visit_date = visit_datetime.split("T")[0]
+    visit_time = visit_datetime.split("T")[1] if "T" in visit_datetime else ""
+
+    visit = {
+        "visit_number": 1,
+        "visit_datetime": visit_datetime,
+        "visit_date": visit_date,
+        "visit_time": visit_time,
+        "tubric_study_code": s.get("tubric_study_code", ""),
+        "consent_contact": s.get("consent_contact"),
+        "entered_by": s.get("is_guardian"),
+    }
+
+    if existing:
+        guid = existing["guid"]
+        existing["last_seen_at"] = visit_datetime
+
+        participant = find_participant_by_guid(participants_db["participants"], guid)
+        if participant:
+            visit_number = len(participant.get("visits", [])) + 1
+        else:
+            visit_number = 1
+
+        # Update primary contact info if missing, otherwise track secondary changes
+        if email:
+            if not existing.get("primary_email"):
+                existing["primary_email"] = normalize_email(email)
+            elif normalize_email(email) != normalize_email(existing.get("primary_email", "")):
+                add_secondary_email(existing, email, visit_number, visit_datetime)
+
+        if phone:
+            if not existing.get("primary_phone"):
+                existing["primary_phone"] = normalize_phone(phone)
+            elif normalize_phone(phone) != normalize_phone(existing.get("primary_phone", "")):
+                add_secondary_phone(existing, phone, visit_number, visit_datetime)
+
+        if participant:
+            if email:
+                if not participant.get("email"):
+                    participant["email"] = normalize_email(email)
+                elif normalize_email(email) != normalize_email(participant.get("email", "")):
+                    add_secondary_email(participant, email, visit_number, visit_datetime)
+
+            if phone:
+                if not participant.get("phone"):
+                    participant["phone"] = normalize_phone(phone)
+                elif normalize_phone(phone) != normalize_phone(participant.get("phone", "")):
+                    add_secondary_phone(participant, phone, visit_number, visit_datetime)
+
+            visit["visit_number"] = visit_number
+            participant.setdefault("visits", []).append(visit)
+        else:
+            visit["visit_number"] = 1
+            participant = {
+                "guid": guid,
+                "first_name": s.get("first_name", "").strip(),
+                "last_name": s.get("last_name", "").strip(),
+                "dob": dob,
+                "email": normalize_email(email),
+                "phone": normalize_phone(phone),
+                "secondary_emails": [],
+                "secondary_phones": [],
+                "contact_updates": [],
+                "consent_contact": s.get("consent_contact"),
+                "created_at": now_iso(),
+                "visits": [visit],
+            }
+            participants_db["participants"].append(participant)
+        action = "matched_existing"
+    else:
+        guid = new_guid()
         person = {
             "guid": guid,
-            "first_name": p.get("first_name", ""),
-            "last_name": p.get("last_name", ""),
-            "dob": p.get("dob", ""),
-            "primary_email": normalize_email(p.get("email", "")),
-            "primary_phone": normalize_phone(p.get("phone", "")),
+            "first_name": s.get("first_name", "").strip(),
+            "last_name": s.get("last_name", "").strip(),
+            "dob": dob,
+            "primary_email": normalize_email(email),
+            "primary_phone": normalize_phone(phone),
             "secondary_emails": [],
             "secondary_phones": [],
-            "created_at": created_at,
-            "last_seen_at": p.get("created_at", ""),
+            "created_at": now_iso(),
+            "last_seen_at": visit_datetime,
             "contact_updates": [],
         }
-        people.append(person)
+        guid_db["people"].append(person)
 
+        visit["visit_number"] = 1
         participant = {
             "guid": guid,
-            "first_name": p.get("first_name", ""),
-            "last_name": p.get("last_name", ""),
-            "dob": p.get("dob", ""),
-            "email": normalize_email(p.get("email", "")),
-            "phone": normalize_phone(p.get("phone", "")),
+            "first_name": s.get("first_name", "").strip(),
+            "last_name": s.get("last_name", "").strip(),
+            "dob": dob,
+            "email": normalize_email(email),
+            "phone": normalize_phone(phone),
             "secondary_emails": [],
             "secondary_phones": [],
             "contact_updates": [],
-            "consent_contact": p.get("consent_contact"),
-            "created_at": created_at,
-            "visits": visits,
+            "consent_contact": s.get("consent_contact"),
+            "created_at": now_iso(),
+            "visits": [visit],
         }
-        participants.append(participant)
+        participants_db["participants"].append(participant)
+        action = "created_new"
 
-    save_json_file(GUID_DB_FILE, {"people": people})
-    save_json_file(PARTICIPANTS_DB_FILE, {"participants": participants})
+    export_guid_csv(guid_db)
+    export_participants_csv(participants_db)
+    export_deidentified_visits(participants_db)
+    auto_push_deidentified()
 
-
-def load_guid_db():
-    maybe_migrate_legacy()
-    return load_json_file(GUID_DB_FILE, {"people": []})
-
-
-def load_participants_db():
-    maybe_migrate_legacy()
-    return load_json_file(PARTICIPANTS_DB_FILE, {"participants": []})
+    return guid, action, guid_db, participants_db
 
 
 def names_match(p, first_name: str, last_name: str) -> bool:
@@ -676,7 +770,11 @@ class StyledButton(tk.Button):
         elif style == "secondary":
             bg = COLORS['card']
             fg = COLORS['text']
-            active_bg = COLORS['border']
+            active_bg = COLORS['primary_light']
+        elif style == "ghost":
+            bg = COLORS['card']
+            fg = COLORS['text_light']
+            active_bg = COLORS['card']
         else:
             bg = COLORS['primary']
             fg = "black"
@@ -686,7 +784,7 @@ class StyledButton(tk.Button):
             parent,
             text=text,
             command=command,
-            font=("Helvetica", 16, "bold"),
+            font=FONT_BUTTON,
             bg=bg,
             fg=fg,
             activebackground=active_bg,
@@ -695,7 +793,7 @@ class StyledButton(tk.Button):
             padx=40,
             pady=16,
             cursor="hand2",
-            borderwidth=2,
+            borderwidth=1 if style == "secondary" else 0,
             highlightthickness=0,
             **kwargs
         )
@@ -708,14 +806,14 @@ class StyledEntry(tk.Entry):
     def __init__(self, parent, **kwargs):
         # Set defaults but allow them to be overridden
         defaults = {
-            'font': ("Helvetica", 14),
+            'font': ("Helvetica Neue", 14),
             'bg': COLORS['card'],
             'fg': COLORS['text'],
             'insertbackground': COLORS['primary'],
             'relief': "solid",
-            'borderwidth': 2,
+            'borderwidth': 1,
             'highlightthickness': 1,
-            'highlightcolor': COLORS['primary'],
+            'highlightcolor': COLORS['accent'],
             'highlightbackground': COLORS['border'],
         }
         # Merge defaults with kwargs (kwargs take precedence)
@@ -739,9 +837,10 @@ class BaseFrame(tk.Frame):
         pass
 
 
-def build_card(parent, inner_padx=80, inner_pady=60):
-    card = tk.Frame(parent, bg=COLORS['card'], relief="flat", borderwidth=0)
+def build_card(parent, inner_padx=80, inner_pady=60, width=920, height=620):
+    card = tk.Frame(parent, bg=COLORS['card'], relief="flat", borderwidth=0, width=width, height=height)
     card.pack(padx=60, pady=40)
+    card.pack_propagate(False)
 
     # Subtle drop shadow
     shadow = tk.Frame(card, bg=COLORS['shadow'], relief="flat")
@@ -749,12 +848,41 @@ def build_card(parent, inner_padx=80, inner_pady=60):
     card.lift()
 
     # Accent top bar
-    accent = tk.Frame(card, bg=COLORS['accent'], height=4)
+    accent = tk.Frame(card, bg=COLORS['accent'], height=5)
     accent.pack(fill="x", side="top")
 
     inner = tk.Frame(card, bg=COLORS['card'], padx=inner_padx, pady=inner_pady)
     inner.pack()
     return inner
+
+
+def add_brand_header(parent, controller, subtitle=None):
+    header = tk.Frame(parent, bg=COLORS['card'])
+    header.pack(pady=(0, 18))
+
+    if controller.logo_image:
+        tk.Label(
+            header,
+            image=controller.logo_image,
+            bg=COLORS['card'],
+        ).pack(pady=(0, 8))
+
+    tk.Label(
+        header,
+        text="TUBRIC Check-In",
+        bg=COLORS['card'],
+        fg=COLORS['text'],
+        font=FONT_TITLE,
+    ).pack()
+
+    if subtitle:
+        tk.Label(
+            header,
+            text=subtitle,
+            bg=COLORS['card'],
+            fg=COLORS['text_light'],
+            font=FONT_BODY,
+        ).pack(pady=(6, 0))
 
 
 class WelcomeFrame(BaseFrame):
@@ -778,7 +906,7 @@ class WelcomeFrame(BaseFrame):
             text=f"Welcome to {SITE_NAME}",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 32, "bold"),
+            font=FONT_DISPLAY,
         ).pack(pady=(10, 0))
 
         tk.Label(
@@ -786,7 +914,7 @@ class WelcomeFrame(BaseFrame):
             text="Temple University Brain Research Imaging Center",
             bg=COLORS['card'],
             fg=COLORS['text_light'],
-            font=("Helvetica", 14),
+            font=FONT_BODY,
         ).pack(pady=(6, 0))
 
         # Subtitle
@@ -795,8 +923,8 @@ class WelcomeFrame(BaseFrame):
             text="Please follow the prompts to check in for your visit today.",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 16),
-            wraplength=600,
+            font=FONT_SUBTITLE,
+            wraplength=720,
             justify="center"
         ).pack(pady=(0, 10))
         
@@ -805,11 +933,11 @@ class WelcomeFrame(BaseFrame):
             text="If you are a parent/guardian completing this,\nplease enter the PARTICIPANT'S information.",
             bg=COLORS['card'],
             fg=COLORS['text_light'],
-            font=("Helvetica", 14),
+            font=FONT_BODY,
             justify="center"
         ).pack(pady=(0, 30))
 
-        StyledButton(inner, "Start Check-In", lambda: controller.show("ConsentFrame")).pack()
+        StyledButton(inner, "Start Check-In", lambda: controller.show("ConsentFrame")).pack(pady=(4, 0))
 
 
 class ConsentFrame(BaseFrame):
@@ -817,21 +945,22 @@ class ConsentFrame(BaseFrame):
         super().__init__(parent, controller)
 
         card = build_card(self.content, inner_padx=80, inner_pady=60)
+        add_brand_header(card, controller)
 
         tk.Label(
             card,
             text="Contact Permission",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 28, "bold"),
+            font=FONT_TITLE,
         ).pack(pady=(0, 20))
 
         tk.Label(
             card,
-            text="May we contact the participant/guardian in the future\nabout research opportunities?",
+            text="May we contact you about future research opportunities?",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 16),
+            font=FONT_SUBTITLE,
             justify="center"
         ).pack(pady=(0, 10))
         
@@ -840,7 +969,7 @@ class ConsentFrame(BaseFrame):
             text='We will save your information regardless of your choice.',
             bg=COLORS['card'],
             fg=COLORS['text_light'],
-            font=("Helvetica", 14),
+            font=FONT_BODY,
             justify="center"
         ).pack(pady=(0, 30))
 
@@ -849,7 +978,7 @@ class ConsentFrame(BaseFrame):
 
         StyledButton(
             btn_row, 
-            "Yes, you may contact me", 
+            "Yes, contact me", 
             lambda: self._set_consent(True),
             width=22
         ).grid(row=0, column=0, padx=10)
@@ -865,7 +994,7 @@ class ConsentFrame(BaseFrame):
         tk.Button(
             card, 
             text="← Back", 
-            font=("Helvetica", 13),
+            font=FONT_BODY,
             bg=COLORS['card'],
             fg=COLORS['text_light'],
             relief="flat",
@@ -883,29 +1012,22 @@ class NoConsentFrame(BaseFrame):
         super().__init__(parent, controller)
 
         card = build_card(self.content, inner_padx=80, inner_pady=60)
-
-        tk.Label(
-            card,
-            text="✓",
-            bg=COLORS['card'],
-            fg=COLORS['success'],
-            font=("Helvetica", 56)
-        ).pack(pady=(0, 20))
+        add_brand_header(card, controller)
 
         tk.Label(
             card,
             text="All Set",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 28, "bold"),
+            font=FONT_TITLE,
         ).pack(pady=(0, 20))
 
         tk.Label(
             card,
-            text="No problem — we won't save contact information.",
+            text="No problem — we won't contact you about research opportunities.",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 16),
+            font=FONT_SUBTITLE,
             justify="center"
         ).pack(pady=(0, 10))
         
@@ -914,7 +1036,7 @@ class NoConsentFrame(BaseFrame):
             text="Please let the research assistant know\nyou have checked in.",
             bg=COLORS['card'],
             fg=COLORS['text_light'],
-            font=("Helvetica", 14),
+            font=FONT_BODY,
             justify="center"
         ).pack(pady=(0, 30))
 
@@ -926,21 +1048,22 @@ class RoleFrame(BaseFrame):
         super().__init__(parent, controller)
 
         card = build_card(self.content, inner_padx=80, inner_pady=60)
+        add_brand_header(card, controller)
 
         tk.Label(
             card,
             text="Who is checking in?",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 28, "bold"),
+            font=FONT_TITLE,
         ).pack(pady=(0, 20))
 
         tk.Label(
             card,
-            text="Please select who is filling out this form.",
+            text="Please select who is completing this form.",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 16),
+            font=FONT_SUBTITLE,
             justify="center"
         ).pack(pady=(0, 10))
         
@@ -949,7 +1072,7 @@ class RoleFrame(BaseFrame):
             text="If you are a parent/guardian, enter the\nPARTICIPANT'S information on the next screen.",
             bg=COLORS['card'],
             fg=COLORS['text_light'],
-            font=("Helvetica", 14),
+            font=FONT_BODY,
             justify="center"
         ).pack(pady=(0, 30))
 
@@ -959,7 +1082,7 @@ class RoleFrame(BaseFrame):
         tk.Button(
             card, 
             text="← Back", 
-            font=("Helvetica", 13),
+            font=FONT_BODY,
             bg=COLORS['card'],
             fg=COLORS['text_light'],
             relief="flat",
@@ -977,13 +1100,14 @@ class ParticipantInfoFrame(BaseFrame):
         super().__init__(parent, controller)
 
         card = build_card(self.content, inner_padx=70, inner_pady=50)
+        add_brand_header(card, controller)
 
         tk.Label(
             card,
             text="Participant Information",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 28, "bold"),
+            font=FONT_TITLE,
         ).pack(pady=(0, 15))
 
         self.sub = tk.Label(
@@ -991,7 +1115,7 @@ class ParticipantInfoFrame(BaseFrame):
             text="Please enter your information below.",
             bg=COLORS['card'],
             fg=COLORS['text_light'],
-            font=("Helvetica", 15),
+            font=FONT_BODY,
             justify="center",
         )
         self.sub.pack(pady=(0, 25))
@@ -1013,7 +1137,7 @@ class ParticipantInfoFrame(BaseFrame):
                 text=label_text,
                 bg=COLORS['card'],
                 fg=COLORS['text'],
-                font=("Helvetica", 14, "bold"),
+                font=FONT_LABEL,
                 anchor="w"
             ).pack(side="left")
             
@@ -1023,7 +1147,7 @@ class ParticipantInfoFrame(BaseFrame):
                     text=f" ({format_example})",
                     bg=COLORS['card'],
                     fg=COLORS['text_light'],
-                    font=("Helvetica", 13),
+                    font=FONT_SMALL,
                     anchor="w"
                 ).pack(side="left")
 
@@ -1087,15 +1211,15 @@ class ParticipantInfoFrame(BaseFrame):
         self.phone.bind("<Return>", lambda e: self._continue())
 
         # Note
-        note_frame = tk.Frame(card, bg=COLORS['primary_light'], padx=15, pady=12)
+        note_frame = tk.Frame(card, bg=COLORS['accent_light'], padx=15, pady=12)
         note_frame.pack(pady=(20, 20), fill="x")
         
         tk.Label(
             note_frame,
             text="Please provide both email and phone number.",
-            bg=COLORS['primary_light'],
-            fg=COLORS['primary_dark'],
-            font=("Helvetica", 12),
+            bg=COLORS['accent_light'],
+            fg=COLORS['text'],
+            font=FONT_SMALL,
             justify="center"
         ).pack()
 
@@ -1108,7 +1232,7 @@ class ParticipantInfoFrame(BaseFrame):
         tk.Button(
             button_frame,
             text="← Back",
-            font=("Helvetica", 13),
+            font=FONT_BODY,
             bg=COLORS['card'],
             fg=COLORS['text_light'],
             relief="flat",
@@ -1181,13 +1305,14 @@ class StudyCodeFrame(BaseFrame):
         super().__init__(parent, controller)
 
         card = build_card(self.content, inner_padx=80, inner_pady=60)
+        add_brand_header(card, controller)
 
         tk.Label(
             card,
             text="Today's Visit",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 28, "bold"),
+            font=FONT_TITLE,
         ).pack(pady=(0, 15))
 
         tk.Label(
@@ -1195,7 +1320,7 @@ class StudyCodeFrame(BaseFrame):
             text="TUBRIC Study Code",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 16, "bold"),
+            font=FONT_SUBTITLE,
         ).pack(pady=(0, 10))
         
         tk.Label(
@@ -1203,11 +1328,11 @@ class StudyCodeFrame(BaseFrame):
             text="Please have the research assistant\nfill in this information.",
             bg=COLORS['card'],
             fg=COLORS['text_light'],
-            font=("Helvetica", 14),
+            font=FONT_BODY,
             justify="center"
         ).pack(pady=(0, 25))
 
-        self.code = StyledEntry(card, width=35, justify="center", font=("Helvetica", 18))
+        self.code = StyledEntry(card, width=35, justify="center", font=("Helvetica Neue", 18))
         self.code.pack(pady=15, ipady=10)
         self.code.bind("<Return>", lambda e: self._finish())
 
@@ -1216,7 +1341,7 @@ class StudyCodeFrame(BaseFrame):
         tk.Button(
             card,
             text="← Back",
-            font=("Helvetica", 13),
+            font=FONT_BODY,
             bg=COLORS['card'],
             fg=COLORS['text_light'],
             relief="flat",
@@ -1248,21 +1373,14 @@ class DoneFrame(BaseFrame):
         super().__init__(parent, controller)
 
         card = build_card(self.content, inner_padx=80, inner_pady=60)
-
-        tk.Label(
-            card,
-            text="✓",
-            bg=COLORS['card'],
-            fg=COLORS['success'],
-            font=("Helvetica", 56)
-        ).pack(pady=(0, 20))
+        add_brand_header(card, controller)
 
         tk.Label(
             card,
             text="You're All Set!",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 28, "bold"),
+            font=FONT_TITLE,
         ).pack(pady=(0, 20))
 
         tk.Label(
@@ -1270,7 +1388,7 @@ class DoneFrame(BaseFrame):
             text="Thank you for checking in.",
             bg=COLORS['card'],
             fg=COLORS['text'],
-            font=("Helvetica", 16),
+            font=FONT_SUBTITLE,
             justify="center"
         ).pack(pady=(0, 10))
         
@@ -1279,7 +1397,7 @@ class DoneFrame(BaseFrame):
             text="Please let the research assistant know\nyou have completed the check-in process.",
             bg=COLORS['card'],
             fg=COLORS['text_light'],
-            font=("Helvetica", 14),
+            font=FONT_BODY,
             justify="center"
         ).pack(pady=(0, 30))
 
@@ -1367,133 +1485,11 @@ class KioskApp(tk.Tk):
         """
         Silent save + DOB-first matching. Participant never sees matching details.
         """
-        s = self.state
-
-        dob = s["dob"]
-        email = s["email"]
-        phone = s["phone"]
-
-        existing = find_person(
-            self.guid_db["people"],
-            dob=dob,
-            first_name=s["first_name"],
-            last_name=s["last_name"],
-            email=email,
-            phone=phone,
+        guid, action, self.guid_db, self.participants_db = submit_checkin(
+            self.state,
+            self.guid_db,
+            self.participants_db,
         )
-
-        visit_datetime = now_iso()
-        visit_date = visit_datetime.split("T")[0]
-        visit_time = visit_datetime.split("T")[1] if "T" in visit_datetime else ""
-
-        visit = {
-            "visit_number": 1,
-            "visit_datetime": visit_datetime,
-            "visit_date": visit_date,
-            "visit_time": visit_time,
-            "tubric_study_code": s["tubric_study_code"],
-            "consent_contact": s["consent_contact"],
-            "entered_by": s["is_guardian"],
-        }
-
-        if existing:
-            guid = existing["guid"]
-            existing["last_seen_at"] = visit_datetime
-
-            participant = find_participant_by_guid(self.participants_db["participants"], guid)
-            if participant:
-                visit_number = len(participant.get("visits", [])) + 1
-            else:
-                visit_number = 1
-
-            # Update primary contact info if missing, otherwise track secondary changes
-            if email:
-                if not existing.get("primary_email"):
-                    existing["primary_email"] = normalize_email(email)
-                elif normalize_email(email) != normalize_email(existing.get("primary_email", "")):
-                    add_secondary_email(existing, email, visit_number, visit_datetime)
-
-            if phone:
-                if not existing.get("primary_phone"):
-                    existing["primary_phone"] = normalize_phone(phone)
-                elif normalize_phone(phone) != normalize_phone(existing.get("primary_phone", "")):
-                    add_secondary_phone(existing, phone, visit_number, visit_datetime)
-
-            if participant:
-                if email:
-                    if not participant.get("email"):
-                        participant["email"] = normalize_email(email)
-                    elif normalize_email(email) != normalize_email(participant.get("email", "")):
-                        add_secondary_email(participant, email, visit_number, visit_datetime)
-
-                if phone:
-                    if not participant.get("phone"):
-                        participant["phone"] = normalize_phone(phone)
-                    elif normalize_phone(phone) != normalize_phone(participant.get("phone", "")):
-                        add_secondary_phone(participant, phone, visit_number, visit_datetime)
-
-                visit["visit_number"] = visit_number
-                participant.setdefault("visits", []).append(visit)
-            else:
-                visit["visit_number"] = 1
-                participant = {
-                    "guid": guid,
-                    "first_name": s["first_name"].strip(),
-                    "last_name": s["last_name"].strip(),
-                    "dob": dob,
-                    "email": normalize_email(email),
-                    "phone": normalize_phone(phone),
-                    "secondary_emails": [],
-                    "secondary_phones": [],
-                    "contact_updates": [],
-                    "consent_contact": s["consent_contact"],
-                    "created_at": now_iso(),
-                    "visits": [visit],
-                }
-                self.participants_db["participants"].append(participant)
-            action = "matched_existing"
-        else:
-            guid = new_guid()
-            person = {
-                "guid": guid,
-                "first_name": s["first_name"].strip(),
-                "last_name": s["last_name"].strip(),
-                "dob": dob,
-                "primary_email": normalize_email(email),
-                "primary_phone": normalize_phone(phone),
-                "secondary_emails": [],
-                "secondary_phones": [],
-                "created_at": now_iso(),
-                "last_seen_at": visit_datetime,
-                "contact_updates": [],
-            }
-            self.guid_db["people"].append(person)
-
-            visit["visit_number"] = 1
-            participant = {
-                "guid": guid,
-                "first_name": s["first_name"].strip(),
-                "last_name": s["last_name"].strip(),
-                "dob": dob,
-                "email": normalize_email(email),
-                "phone": normalize_phone(phone),
-                "secondary_emails": [],
-                "secondary_phones": [],
-                "contact_updates": [],
-                "consent_contact": s["consent_contact"],
-                "created_at": now_iso(),
-                "visits": [visit],
-            }
-            self.participants_db["participants"].append(participant)
-            action = "created_new"
-
-        save_json_file(GUID_DB_FILE, self.guid_db)
-        save_json_file(PARTICIPANTS_DB_FILE, self.participants_db)
-        export_guid_csv(self.guid_db)
-        export_participants_csv(self.participants_db)
-        export_deidentified_visits(self.participants_db)
-
-        self._auto_push_deidentified()
 
         # DEV log (remove later)
         print("\n--- CHECK-IN SAVED ---")
@@ -1503,31 +1499,6 @@ class KioskApp(tk.Tk):
         print("--- END ---\n")
 
         return guid, action
-
-    def _auto_push_deidentified(self):
-        """
-        Pushes de-identified CSV to the Git repo at BASE_DIR.
-        Safe to ignore failures (e.g., no remote, auth not set).
-        """
-        try:
-            import subprocess
-            script = os.path.join(os.path.dirname(__file__), "push_deidentified_to_git.py")
-            subprocess.run(
-                [self._python_executable(), script, BASE_DIR, "--file", DEID_EXPORT_FILE],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-        except Exception:
-            pass
-
-    def _python_executable(self):
-        exe = os.environ.get("VIRTUAL_ENV")
-        if exe:
-            candidate = os.path.join(exe, "bin", "python")
-            if os.path.exists(candidate):
-                return candidate
-        return "python3"
 
 
 if __name__ == "__main__":
