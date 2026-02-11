@@ -172,6 +172,25 @@ p {
   border: 1px solid transparent;
 }
 
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal-card {
+  width: min(760px, 86vw);
+  background: #ffffff;
+  border-radius: var(--cardRadius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 40px 48px;
+}
+
 .btn:hover {
   transform: translateY(-1px);
 }

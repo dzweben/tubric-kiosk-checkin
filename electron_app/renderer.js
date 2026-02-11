@@ -71,11 +71,23 @@ document.querySelectorAll("[data-next]").forEach((btn) => {
   btn.addEventListener("click", () => showScreen(btn.dataset.next));
 });
 
+const contactModal = document.getElementById("contact-modal");
+const contactModalOk = document.getElementById("contact-modal-ok");
+
 document.querySelectorAll("[data-consent]").forEach((btn) => {
   btn.addEventListener("click", () => {
     state.consent_contact = btn.dataset.consent;
-    showScreen("screen-role");
+    if (state.consent_contact === "Yes") {
+      contactModal.classList.remove("hidden");
+    } else {
+      showScreen("screen-role");
+    }
   });
+});
+
+contactModalOk.addEventListener("click", () => {
+  contactModal.classList.add("hidden");
+  showScreen("screen-role");
 });
 
 document.querySelectorAll("[data-role]").forEach((btn) => {
@@ -90,10 +102,21 @@ document.querySelectorAll("[data-back]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const current = screens.find((s) => !s.classList.contains("hidden"));
     if (!current) return;
-    if (current.id === "screen-consent") return showScreen("screen-welcome");
+    if (current.id === "screen-privacy") return showScreen("screen-welcome");
+    if (current.id === "screen-consent") return showScreen("screen-privacy");
     if (current.id === "screen-role") return showScreen("screen-consent");
     if (current.id === "screen-info") return showScreen("screen-role");
     if (current.id === "screen-study") return showScreen("screen-info");
+  });
+});
+
+document.querySelectorAll("[data-privacy]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.privacy === "yes") {
+      showScreen("screen-consent");
+    } else {
+      showScreen("screen-no-checkin");
+    }
   });
 });
 
@@ -167,5 +190,9 @@ document.getElementById("finish").addEventListener("click", async () => {
 });
 
 document.getElementById("done").addEventListener("click", () => {
+  window.location.reload();
+});
+
+document.getElementById("no-checkin-done").addEventListener("click", () => {
   window.location.reload();
 });

@@ -21,7 +21,33 @@
         <p class="lead">Tap below to begin check-in.</p>
         <p class="muted">Parents/guardians: please enter the participant's information.</p>
         <div class="actions">
-          <button class="btn primary" data-next="screen-consent">Start Check-In</button>
+          <button class="btn primary" data-next="screen-privacy">Start Check-In</button>
+        </div>
+      </section>
+
+      <section class="card screen-center hidden" id="screen-privacy">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TUBRIC PARTICIPANT POOL</div>
+            <div class="kicker-sub">Privacy & Use of Information</div>
+          </div>
+        </header>
+
+        <h1>About this participant pool</h1>
+        <p class="lead">
+          Your information will be kept completely private and used only within
+          the TUBRIC center to support MRI research operations and analysis.
+        </p>
+        <p class="muted">
+          If you do not wish to proceed, you do not need to check in today.
+        </p>
+        <div class="actions split">
+          <button class="btn primary" data-privacy="yes">I agree, continue</button>
+          <button class="btn secondary" data-privacy="no">I do not agree</button>
+        </div>
+        <div class="actions">
+          <button class="btn ghost" data-back>← Back</button>
         </div>
       </section>
 
@@ -136,7 +162,36 @@
           <button class="btn primary" id="done">Done</button>
         </div>
       </section>
+
+      <section class="card screen-center hidden" id="screen-no-checkin">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TUBRIC CHECK-IN</div>
+            <div class="kicker-sub">No Action Needed</div>
+          </div>
+        </header>
+        <h1>You do not have to check in.</h1>
+        <p class="lead">Thank you for your time today.</p>
+        <div class="actions">
+          <button class="btn primary" id="no-checkin-done">Done</button>
+        </div>
+      </section>
     </main>
+
+    <div class="modal hidden" id="contact-modal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h2>Thanks for opting in</h2>
+        <p class="muted">
+          You selected “Yes, contact me.” You will be added to a newsletter that
+          occasionally emails participants about upcoming projects. You can let
+          us know at a future time if you would like to be removed.
+        </p>
+        <div class="actions">
+          <button class="btn primary" id="contact-modal-ok">OK</button>
+        </div>
+      </div>
+    </div>
 
     <script src="./renderer.js"></script>
   </body>
