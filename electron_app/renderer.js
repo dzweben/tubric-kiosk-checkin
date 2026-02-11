@@ -35,6 +35,24 @@ function normalizeDob(dob) {
   return `${parts[2]}-${parts[0]}-${parts[1]}`;
 }
 
+function isValidDob(dob) {
+  if (!/^\d{2}-\d{2}-\d{4}$/.test(dob)) return false;
+  const [mm, dd, yyyy] = dob.split("-").map((v) => parseInt(v, 10));
+  if (mm < 1 || mm > 12) return false;
+  if (dd < 1 || dd > 31) return false;
+  if (yyyy < 1900 || yyyy > 2100) return false;
+  const date = new Date(yyyy, mm - 1, dd);
+  return (
+    date.getFullYear() === yyyy &&
+    date.getMonth() === mm - 1 &&
+    date.getDate() === dd
+  );
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 function normalizePhoneDigits(phone) {
   return phone.replace(/\D/g, "");
 }
@@ -103,12 +121,12 @@ document.getElementById("info-continue").addEventListener("click", () => {
     error.textContent = "Please enter the participant's first and last name.";
     return;
   }
-  if (!/^\d{2}-\d{2}-\d{4}$/.test(dob)) {
+  if (!isValidDob(dob)) {
     error.textContent = "Please enter date of birth as MM-DD-YYYY.";
     return;
   }
-  if (!email) {
-    error.textContent = "Please enter an email address.";
+  if (!email || !isValidEmail(email)) {
+    error.textContent = "Please enter a valid email address.";
     return;
   }
   if (!phone) {

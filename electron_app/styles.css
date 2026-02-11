@@ -9,7 +9,7 @@
 body {
   margin: 0;
   font-family: "Avenir Next", "IBM Plex Sans", "Source Sans 3", "Helvetica Neue", sans-serif;
-  background: #eef1f7;
+  background: linear-gradient(135deg, #f7f8fb 0%, #eef2f7 100%);
   color: #0f172a;
   min-height: 100vh;
   display: flex;
@@ -18,43 +18,20 @@ body {
   overflow: hidden;
 }
 
-.bg-orb {
-  position: absolute;
-  border-radius: 999px;
-  filter: blur(0px);
-  opacity: 0.2;
-  z-index: 0;
-}
-
-.orb-1 {
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle, #9d2235 0%, rgba(157,34,53,0.1) 65%);
-  top: -120px;
-  right: -140px;
-}
-
-.orb-2 {
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle, #1e293b 0%, rgba(30,41,59,0.08) 70%);
-  bottom: -140px;
-  left: -120px;
-}
-
 .kiosk {
   position: relative;
   z-index: 1;
-  width: min(1100px, 92vw);
+  width: min(1200px, 95vw);
 }
 
 .card {
   background: #ffffff;
-  padding: 48px 64px;
-  border-radius: 22px;
-  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+  padding: 56px 72px;
+  border-radius: 26px;
+  box-shadow: 0 35px 90px rgba(15, 23, 42, 0.12);
   border: 1px solid #e2e8f0;
   animation: fadeUp 420ms ease;
+  min-height: min(660px, 88vh);
 }
 
 .hidden {
@@ -64,7 +41,7 @@ body {
 .brand {
   border-top: 4px solid #9d2235;
   padding-top: 14px;
-  margin-bottom: 26px;
+  margin-bottom: 28px;
 }
 
 .brand-title {
@@ -77,18 +54,18 @@ body {
 
 .brand-subtitle {
   margin-top: 6px;
-  font-size: 14px;
-  color: #64748b;
+  font-size: 15px;
+  color: #475569;
 }
 
 h1 {
-  font-size: 38px;
-  margin: 0 0 12px 0;
+  font-size: 42px;
+  margin: 0 0 14px 0;
 }
 
 h2 {
-  font-size: 28px;
-  margin: 0 0 12px 0;
+  font-size: 32px;
+  margin: 0 0 14px 0;
 }
 
 p {
@@ -96,12 +73,13 @@ p {
 }
 
 .lead {
-  font-size: 18px;
+  font-size: 20px;
   color: #0f172a;
 }
 
 .muted {
-  color: #64748b;
+  color: #475569;
+  font-size: 16px;
 }
 
 .actions {
@@ -122,9 +100,9 @@ p {
 
 .btn {
   border: none;
-  padding: 16px 26px;
-  border-radius: 12px;
-  font-size: 16px;
+  padding: 18px 28px;
+  border-radius: 14px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
   transition: all 160ms ease;
@@ -160,17 +138,17 @@ p {
 .form label {
   display: flex;
   flex-direction: column;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #0f172a;
 }
 
 .form input {
   margin-top: 8px;
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .form label:nth-child(3),
@@ -188,17 +166,18 @@ p {
 .note {
   background: #f8e5e9;
   color: #0f172a;
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-radius: 12px;
   margin-top: 18px;
+  font-size: 15px;
 }
 
 .study-input {
   width: 100%;
-  padding: 16px 18px;
-  border-radius: 12px;
+  padding: 18px 20px;
+  border-radius: 14px;
   border: 1px solid #e2e8f0;
-  font-size: 18px;
+  font-size: 20px;
   text-align: center;
   margin-top: 16px;
 }
