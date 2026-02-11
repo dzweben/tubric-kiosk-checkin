@@ -181,6 +181,7 @@ def load_guid_db():
                 "secondary_phones": _split_list(p.get("secondary_phones", "")),
                 "newsletter_emails": _split_list(p.get("newsletter_emails", "")),
                 "newsletter_phones": _split_list(p.get("newsletter_phones", "")),
+                "newsletter_pref": p.get("newsletter_pref", ""),
                 "created_at": p.get("created_at", ""),
                 "last_seen_at": p.get("last_seen_at", ""),
                 "contact_updates": contact_by_guid.get(guid, []),
@@ -235,6 +236,7 @@ def load_participants_db():
                 "secondary_phones": _split_list(p.get("secondary_phones", "")),
                 "newsletter_emails": _split_list(p.get("newsletter_emails", "")),
                 "newsletter_phones": _split_list(p.get("newsletter_phones", "")),
+                "newsletter_pref": p.get("newsletter_pref", ""),
                 "consent_contact": p.get("consent_contact", ""),
                 "created_at": p.get("created_at", ""),
                 "visits": visits_by_guid.get(guid, []),
@@ -335,6 +337,7 @@ def export_guid_csv(guid_db):
                 "secondary_phones": "|".join(p.get("secondary_phones", [])),
                 "newsletter_emails": "|".join(p.get("newsletter_emails", [])),
                 "newsletter_phones": "|".join(p.get("newsletter_phones", [])),
+                "newsletter_pref": p.get("newsletter_pref", ""),
                 "created_at": p.get("created_at", ""),
                 "last_seen_at": p.get("last_seen_at", ""),
             }
@@ -365,6 +368,7 @@ def export_guid_csv(guid_db):
             "secondary_phones",
             "newsletter_emails",
             "newsletter_phones",
+            "newsletter_pref",
             "created_at",
             "last_seen_at",
         ],
@@ -395,6 +399,7 @@ def export_participants_csv(participants_db):
                 "secondary_phones": "|".join(p.get("secondary_phones", [])),
                 "newsletter_emails": "|".join(p.get("newsletter_emails", [])),
                 "newsletter_phones": "|".join(p.get("newsletter_phones", [])),
+                "newsletter_pref": p.get("newsletter_pref", ""),
                 "consent_contact": p.get("consent_contact", ""),
                 "created_at": p.get("created_at", ""),
             }
@@ -439,6 +444,7 @@ def export_participants_csv(participants_db):
             "secondary_phones",
             "newsletter_emails",
             "newsletter_phones",
+            "newsletter_pref",
             "consent_contact",
             "created_at",
         ],
@@ -530,6 +536,7 @@ def submit_checkin(state, guid_db=None, participants_db=None):
     phone = s.get("phone", "")
     newsletter_email = s.get("newsletter_email", "")
     newsletter_phone = s.get("newsletter_phone", "")
+    newsletter_pref = s.get("newsletter_pref", "")
 
     existing = find_person(
         guid_db["people"],
@@ -594,6 +601,8 @@ def submit_checkin(state, guid_db=None, participants_db=None):
                     add_newsletter_email(participant, newsletter_email, visit_number, visit_datetime)
                 if newsletter_phone:
                     add_newsletter_phone(participant, newsletter_phone, visit_number, visit_datetime)
+                if newsletter_pref:
+                    participant["newsletter_pref"] = newsletter_pref
 
                 visit["visit_number"] = visit_number
                 participant.setdefault("visits", []).append(visit)
@@ -619,6 +628,8 @@ def submit_checkin(state, guid_db=None, participants_db=None):
                     add_newsletter_email(participant, newsletter_email, visit_number, visit_datetime)
                 if newsletter_phone:
                     add_newsletter_phone(participant, newsletter_phone, visit_number, visit_datetime)
+                if newsletter_pref:
+                    participant["newsletter_pref"] = newsletter_pref
                 participants_db["participants"].append(participant)
             action = "matched_existing"
     else:
@@ -642,6 +653,8 @@ def submit_checkin(state, guid_db=None, participants_db=None):
             add_newsletter_email(person, newsletter_email, 1, visit_datetime)
         if newsletter_phone:
             add_newsletter_phone(person, newsletter_phone, 1, visit_datetime)
+        if newsletter_pref:
+            person["newsletter_pref"] = newsletter_pref
         guid_db["people"].append(person)
 
         visit["visit_number"] = 1
@@ -665,6 +678,8 @@ def submit_checkin(state, guid_db=None, participants_db=None):
             add_newsletter_email(participant, newsletter_email, 1, visit_datetime)
         if newsletter_phone:
             add_newsletter_phone(participant, newsletter_phone, 1, visit_datetime)
+        if newsletter_pref:
+            participant["newsletter_pref"] = newsletter_pref
         participants_db["participants"].append(participant)
         action = "created_new"
 

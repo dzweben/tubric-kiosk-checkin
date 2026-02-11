@@ -187,7 +187,8 @@
           You selected “Yes” to receive future opportunities. The form above
           asks for the participant’s information. If you want the newsletter to
           go to you instead, enter your email and phone number below. If the
-          participant’s contact is already correct, you can close this.
+          participant’s contact is already the one you want the newsletter to go
+          to, you can close this.
         </p>
         <div class="modal-form">
           <label>
@@ -197,6 +198,16 @@
           <label>
             Your Phone (optional)
             <input type="tel" id="guardianPhone" inputmode="numeric" autocomplete="off" />
+          </label>
+        </div>
+        <div class="modal-options hidden" id="guardian-options">
+          <label class="check">
+            <input type="radio" name="newsletter_pref" value="guardian_only" />
+            Please send the newsletter only to the email/phone above.
+          </label>
+          <label class="check">
+            <input type="radio" name="newsletter_pref" value="both" />
+            Please send the newsletter to both the email/phone above and the participant email/phone entered earlier.
           </label>
         </div>
         <div class="error" id="guardian-error"></div>

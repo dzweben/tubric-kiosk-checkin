@@ -10,6 +10,7 @@ const state = {
   tubric_study_code: "",
   newsletter_email: "",
   newsletter_phone: "",
+  newsletter_pref: "",
 };
 let guardianNoticeShown = false;
 
@@ -82,6 +83,7 @@ const guardianModalClose = document.getElementById("guardian-contact-close");
 const guardianEmailInput = document.getElementById("guardianEmail");
 const guardianPhoneInput = document.getElementById("guardianPhone");
 const guardianError = document.getElementById("guardian-error");
+const guardianOptions = document.getElementById("guardian-options");
 
 document.querySelectorAll("[data-consent]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -187,9 +189,26 @@ document.getElementById("info-continue").addEventListener("click", () => {
 
 function closeGuardianModal() {
   guardianError.textContent = "";
+  guardianEmailInput.value = "";
+  guardianPhoneInput.value = "";
+  guardianOptions.classList.add("hidden");
+  document.querySelectorAll('input[name="newsletter_pref"]').forEach((el) => (el.checked = false));
   guardianModal.classList.add("hidden");
   showScreen("screen-study");
 }
+
+function updateGuardianOptionsVisibility() {
+  const hasAny = guardianEmailInput.value.trim() || guardianPhoneInput.value.trim();
+  if (hasAny) {
+    guardianOptions.classList.remove("hidden");
+  } else {
+    guardianOptions.classList.add("hidden");
+    document.querySelectorAll('input[name="newsletter_pref"]').forEach((el) => (el.checked = false));
+  }
+}
+
+guardianEmailInput.addEventListener("input", updateGuardianOptionsVisibility);
+guardianPhoneInput.addEventListener("input", updateGuardianOptionsVisibility);
 
 guardianModalOk.addEventListener("click", () => {
   const gEmail = guardianEmailInput.value.trim();
@@ -204,8 +223,17 @@ guardianModalOk.addEventListener("click", () => {
     return;
   }
 
-  state.newsletter_email = gEmail;
-  state.newsletter_phone = gPhone;
+  if (gEmail || gPhone) {
+    const selected = document.querySelector('input[name="newsletter_pref"]:checked');
+    if (!selected) {
+      guardianError.textContent = "Please choose how the newsletter should be sent.";
+      return;
+    }
+    state.newsletter_email = gEmail;
+    state.newsletter_phone = gPhone;
+    state.newsletter_pref = selected.value;
+  }
+
   closeGuardianModal();
 });
 guardianModalClose.addEventListener("click", closeGuardianModal);

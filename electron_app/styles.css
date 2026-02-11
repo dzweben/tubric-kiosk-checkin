@@ -216,6 +216,25 @@ p {
   margin: 18px 0 6px 0;
 }
 
+.modal-options {
+  margin: 10px 0 6px 0;
+  display: grid;
+  gap: 12px;
+}
+
+.check {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: var(--helper);
+  color: var(--text);
+}
+
+.check input {
+  width: 22px;
+  height: 22px;
+}
+
 .btn:hover {
   transform: translateY(-1px);
 }
