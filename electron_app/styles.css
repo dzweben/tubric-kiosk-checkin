@@ -209,6 +209,13 @@ p {
   cursor: pointer;
 }
 
+.modal-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin: 18px 0 6px 0;
+}
+
 .btn:hover {
   transform: translateY(-1px);
 }

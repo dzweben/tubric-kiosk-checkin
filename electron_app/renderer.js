@@ -8,6 +8,8 @@ const state = {
   email: "",
   phone: "",
   tubric_study_code: "",
+  newsletter_email: "",
+  newsletter_phone: "",
 };
 let guardianNoticeShown = false;
 
@@ -77,6 +79,9 @@ const contactModalOk = document.getElementById("contact-modal-ok");
 const guardianModal = document.getElementById("guardian-contact-modal");
 const guardianModalOk = document.getElementById("guardian-contact-ok");
 const guardianModalClose = document.getElementById("guardian-contact-close");
+const guardianEmailInput = document.getElementById("guardianEmail");
+const guardianPhoneInput = document.getElementById("guardianPhone");
+const guardianError = document.getElementById("guardian-error");
 
 document.querySelectorAll("[data-consent]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -181,11 +186,28 @@ document.getElementById("info-continue").addEventListener("click", () => {
 });
 
 function closeGuardianModal() {
+  guardianError.textContent = "";
   guardianModal.classList.add("hidden");
   showScreen("screen-study");
 }
 
-guardianModalOk.addEventListener("click", closeGuardianModal);
+guardianModalOk.addEventListener("click", () => {
+  const gEmail = guardianEmailInput.value.trim();
+  const gPhone = guardianPhoneInput.value.trim();
+
+  if (gEmail && !isValidEmail(gEmail)) {
+    guardianError.textContent = "Please enter a valid email address.";
+    return;
+  }
+  if (gPhone && normalizePhoneDigits(gPhone).length !== 10) {
+    guardianError.textContent = "Please enter a valid 10-digit phone number.";
+    return;
+  }
+
+  state.newsletter_email = gEmail;
+  state.newsletter_phone = gPhone;
+  closeGuardianModal();
+});
 guardianModalClose.addEventListener("click", closeGuardianModal);
 
 document.getElementById("finish").addEventListener("click", async () => {

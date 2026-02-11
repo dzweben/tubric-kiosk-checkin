@@ -184,10 +184,22 @@
         <button class="modal-close" id="guardian-contact-close" aria-label="Close">×</button>
         <h2>Parent/guardian contact</h2>
         <p class="muted">
-          This form asks for the participant’s information. If you would like
-          future opportunities to go to you, you may enter your own email and
-          phone number here instead. If you already did, you can close this.
+          You selected “Yes” to receive future opportunities. The form above
+          asks for the participant’s information. If you want the newsletter to
+          go to you instead, enter your email and phone number below. If the
+          participant’s contact is already correct, you can close this.
         </p>
+        <div class="modal-form">
+          <label>
+            Your Email (optional)
+            <input type="email" id="guardianEmail" autocomplete="off" />
+          </label>
+          <label>
+            Your Phone (optional)
+            <input type="tel" id="guardianPhone" inputmode="numeric" autocomplete="off" />
+          </label>
+        </div>
+        <div class="error" id="guardian-error"></div>
         <div class="actions">
           <button class="btn primary" id="guardian-contact-ok">Continue</button>
         </div>
