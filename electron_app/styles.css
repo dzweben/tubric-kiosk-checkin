@@ -182,6 +182,10 @@ p {
   z-index: 10;
 }
 
+.modal.hidden {
+  display: none;
+}
+
 .modal-card {
   width: min(760px, 86vw);
   background: #ffffff;
