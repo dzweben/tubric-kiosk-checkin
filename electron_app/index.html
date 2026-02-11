@@ -8,42 +8,51 @@
   </head>
   <body>
     <main class="kiosk">
-      <section class="card center" id="screen-welcome">
+      <section class="card" id="screen-welcome">
         <header class="brand">
-          <div class="brand-title">TUBRIC Check-In</div>
-          <div class="brand-subtitle">Temple University Brain Research Imaging Center</div>
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TUBRIC CHECK-IN</div>
+            <div class="kicker-sub">Temple University Brain Research Imaging Center</div>
+          </div>
         </header>
 
         <h1>Welcome to TUBRIC</h1>
-        <p class="lead">Tap below to begin your check-in.</p>
+        <p class="lead">Tap below to begin check-in.</p>
         <p class="muted">Parents/guardians: please enter the participant's information.</p>
-        <div class="actions center">
+        <div class="actions">
           <button class="btn primary" data-next="screen-consent">Start Check-In</button>
         </div>
       </section>
 
       <section class="card hidden" id="screen-consent">
         <header class="brand">
-          <div class="brand-title">TUBRIC Check-In</div>
-          <div class="brand-subtitle">Contact Permission</div>
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TUBRIC CHECK-IN</div>
+            <div class="kicker-sub">Contact Permission</div>
+          </div>
         </header>
-        <h2>May we contact you about future research opportunities?</h2>
+        <h1>May we contact you about future research opportunities?</h1>
         <div class="actions split">
           <button class="btn primary" data-consent="Yes">Yes, contact me</button>
           <button class="btn secondary" data-consent="No">No, do not contact me</button>
         </div>
-        <div class="actions center">
+        <div class="actions">
           <button class="btn ghost" data-back>← Back</button>
         </div>
       </section>
 
       <section class="card hidden" id="screen-role">
         <header class="brand">
-          <div class="brand-title">TUBRIC Check-In</div>
-          <div class="brand-subtitle">Who is checking in?</div>
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TUBRIC CHECK-IN</div>
+            <div class="kicker-sub">Who is checking in?</div>
+          </div>
         </header>
-        <h2>Please select who is completing this form.</h2>
-        <p class="muted">If you are a parent/guardian, enter the participant's information on the next screen.</p>
+        <h1>Please select who is completing this form.</h1>
+        <p class="muted">Parents/guardians: enter the participant's information on the next screen.</p>
         <div class="actions stack">
           <button class="btn primary" data-role="participant">I am the participant</button>
           <button class="btn secondary" data-role="guardian">I am a parent/guardian</button>
@@ -53,10 +62,13 @@
 
       <section class="card hidden" id="screen-info">
         <header class="brand">
-          <div class="brand-title">TUBRIC Check-In</div>
-          <div class="brand-subtitle">Participant Information</div>
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TUBRIC CHECK-IN</div>
+            <div class="kicker-sub">Participant Information</div>
+          </div>
         </header>
-        <h2>Participant Information</h2>
+        <h1>Participant Information</h1>
         <p class="muted" id="info-subtitle">Please enter your information below.</p>
 
         <form class="form" id="info-form">
@@ -93,10 +105,13 @@
 
       <section class="card hidden" id="screen-study">
         <header class="brand">
-          <div class="brand-title">TUBRIC Check-In</div>
-          <div class="brand-subtitle">Today's Visit</div>
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TUBRIC CHECK-IN</div>
+            <div class="kicker-sub">Today's Visit</div>
+          </div>
         </header>
-        <h2>TUBRIC Study Code</h2>
+        <h1>TUBRIC Study Code</h1>
         <p class="muted">Please have the research assistant fill in this information.</p>
         <input class="study-input" type="text" id="studyCode" autocomplete="off" />
         <div class="error" id="study-error"></div>
@@ -108,10 +123,13 @@
 
       <section class="card hidden" id="screen-done">
         <header class="brand">
-          <div class="brand-title">TUBRIC Check-In</div>
-          <div class="brand-subtitle">All Set</div>
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TUBRIC CHECK-IN</div>
+            <div class="kicker-sub">All Set</div>
+          </div>
         </header>
-        <h2>You're all set.</h2>
+        <h1>You're all set.</h1>
         <p class="lead">Thank you for checking in.</p>
         <p class="muted">Please let the research assistant know you have completed the check-in process.</p>
         <div class="actions">
