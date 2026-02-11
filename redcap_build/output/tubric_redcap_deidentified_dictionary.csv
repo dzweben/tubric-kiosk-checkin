@@ -1,0 +1,8 @@
+Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic,Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation
+sub_id,deidentified_visits,,text,Record ID,,REDCap record identifier.,,,,,,y,,,,,
+guid,deidentified_visits,,text,GUID,,Global unique identifier for the participant.,,,,y,,y,,,,,
+visit_number,deidentified_visits,,text,Visit number,,,integer,,,,,y,,,,,
+visit_datetime,deidentified_visits,,text,Visit datetime,,,datetime_ymd,,,,,y,,,,,
+visit_date,deidentified_visits,,text,Visit date,,,date_ymd,,,,,y,,,,,
+visit_time,deidentified_visits,,text,Visit time,,,time,,,,,y,,,,,
+tubric_study_code,deidentified_visits,,text,TUBRIC study code,,,,,,,,y,,,,,

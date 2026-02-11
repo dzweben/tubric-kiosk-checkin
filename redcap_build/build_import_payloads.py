@@ -28,8 +28,6 @@ DEID_EXPORT_FILE = os.path.join(DEID_EXPORT_DIR, "deidentified_visits.csv")
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 
-SOURCE_CODE_VALUE = "tubric_kiosk_csv"
-
 
 def read_csv(path: str) -> list[dict]:
     if not os.path.exists(path):
@@ -88,7 +86,6 @@ def build_participant_import(record_id_map: dict) -> tuple[list[str], list[dict]
             {
                 "sub_id": record_id,
                 "guid": guid,
-                "source_code_participant": SOURCE_CODE_VALUE,
                 "first_name": p.get("first_name", ""),
                 "last_name": p.get("last_name", ""),
                 "dob": p.get("dob", ""),
@@ -106,7 +103,6 @@ def build_participant_import(record_id_map: dict) -> tuple[list[str], list[dict]
     fieldnames = [
         "sub_id",
         "guid",
-        "source_code_participant",
         "first_name",
         "last_name",
         "dob",
@@ -141,7 +137,6 @@ def build_visit_import(record_id_map: dict) -> tuple[list[str], list[dict]]:
                 "tubric_study_code": v.get("tubric_study_code", ""),
                 "consent_contact_visit": v.get("consent_contact", ""),
                 "entered_by": v.get("entered_by", ""),
-                "source_code_visits": SOURCE_CODE_VALUE,
             }
         )
 
@@ -156,7 +151,6 @@ def build_visit_import(record_id_map: dict) -> tuple[list[str], list[dict]]:
         "tubric_study_code",
         "consent_contact_visit",
         "entered_by",
-        "source_code_visits",
     ]
     return fieldnames, rows
 
@@ -182,7 +176,6 @@ def build_contact_update_import(record_id_map: dict) -> tuple[list[str], list[di
                 "added_at": c.get("added_at", ""),
                 "contact_visit_number": c.get("visit_number", ""),
                 "contact_visit_datetime": c.get("visit_datetime", ""),
-                "source_code_contacts": SOURCE_CODE_VALUE,
             }
         )
 
@@ -195,7 +188,6 @@ def build_contact_update_import(record_id_map: dict) -> tuple[list[str], list[di
         "added_at",
         "contact_visit_number",
         "contact_visit_datetime",
-        "source_code_contacts",
     ]
     return fieldnames, rows
 
@@ -212,7 +204,6 @@ def build_deidentified_visit_import(record_id_map: dict) -> tuple[list[str], lis
                 "sub_id": record_id,
                 "redcap_repeat_instrument": "deidentified_visits",
                 "redcap_repeat_instance": visit_number,
-                "source_code_deidentified": SOURCE_CODE_VALUE,
                 "guid": guid,
                 "visit_number": visit_number,
                 "visit_datetime": v.get("visit_datetime", ""),
@@ -226,7 +217,6 @@ def build_deidentified_visit_import(record_id_map: dict) -> tuple[list[str], lis
         "sub_id",
         "redcap_repeat_instrument",
         "redcap_repeat_instance",
-        "source_code_deidentified",
         "guid",
         "visit_number",
         "visit_datetime",

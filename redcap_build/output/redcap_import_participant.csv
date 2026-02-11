@@ -1,0 +1,3 @@
+sub_id,guid,first_name,last_name,dob,primary_email,primary_phone,newsletter_email,newsletter_phone,newsletter_pref,consent_participant,created_at,last_seen_at
+0413eb34-371b-49cc-9ee9-98531b5d6432,0413eb34-371b-49cc-9ee9-98531b5d6432,Daniel,Zweben,1999-05-19,danny.zweben@gmail.com,2025907688,danny.zweben@gmail.com,2025907688,participant_only,Yes,2026-02-10T18:56:33,2026-02-10T18:56:33
+bd179d98-2f66-4a17-a990-b1e8d5eea945,bd179d98-2f66-4a17-a990-b1e8d5eea945,Danny,Zweben,1999-05-19,danny.zweben99@gmail.com,2025907688,danny.zweben99@gmail.com,2025907688,participant_only,Yes,2026-02-10T19:59:46,2026-02-10T21:43:18

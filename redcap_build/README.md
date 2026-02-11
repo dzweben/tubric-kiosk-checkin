@@ -12,9 +12,6 @@ This folder contains **local-only** tooling to prepare REDCap data dictionaries 
 - `redcap_build/output/redcap_import_contact_updates.csv`
 - `redcap_build/output/redcap_import_deidentified_visits.csv`
 
-## Provenance Requirement (Source Code)
-Every dictionary and import file includes a required `source_code` field. The import builder populates it with `tubric_kiosk_csv` by default. Update `SOURCE_CODE_VALUE` in `redcap_build/build_import_payloads.py` if you want a different value.
-
 ## Record Structure
 - One REDCap record per participant.
 - `sub_id` is the REDCap record identifier and is required.
@@ -51,8 +48,7 @@ De-identified source (repo-safe):
 ## Notes
 - No REDCap API calls are made unless you run the push scripts.
 - `redcap_repeat_instrument` and `redcap_repeat_instance` are included in repeating import files.
-- If you decide to use the API later, ensure every payload row includes `source_code`.
- - Newsletter fields are stored as single values: `newsletter_email`, `newsletter_phone`, and `newsletter_pref`.
+- Newsletter fields are stored as single values: `newsletter_email`, `newsletter_phone`, and `newsletter_pref`.
 
 ## API Push Scripts (Optional)
 All REDCap pushes are scripted and saved locally (no direct UI or manual calls).

@@ -22,7 +22,6 @@ Fields:
 - `consent_participant` (yes/no)
 - `created_at` (datetime)
 - `last_seen_at` (datetime)
-- `source_code_participant` (text, required)
 
 Notes:
 - Secondary emails/phones are captured as rows in the contact updates instrument below (no pipe-delimited fields in REDCap).
@@ -38,7 +37,6 @@ Fields:
 - `tubric_study_code` (text)
 - `consent_contact_visit` (yes/no, per-visit)
 - `entered_by` (enum: `participant`, `guardian`)
-- `source_code_visits` (text, required)
 
 **Instrument: Contact Updates (repeating)**
 Fields:
@@ -47,7 +45,6 @@ Fields:
 - `added_at` (datetime)
 - `contact_visit_number` (integer)
 - `contact_visit_datetime` (datetime)
-- `source_code_contacts` (text, required)
 
 **Optional: De-identified Project or Instrument**
 Source file: `/Users/dannyzweben/Desktop/TUBRIC/Database/db_exports/deidentified_visits.csv`
@@ -59,7 +56,6 @@ Fields:
 - `visit_date`
 - `visit_time`
 - `tubric_study_code`
-- `source_code_deidentified` (text, required)
 
 **CSV Source Mapping**
 Full identifiable data (private):

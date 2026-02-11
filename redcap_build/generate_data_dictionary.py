@@ -36,13 +36,6 @@ COLUMNS = [
     "Field Annotation",
 ]
 
-SOURCE_CODE_NOTE = "Required provenance marker (e.g., tubric_kiosk_csv)."
-
-SOURCE_CODE_PARTICIPANT = "source_code_participant"
-SOURCE_CODE_VISITS = "source_code_visits"
-SOURCE_CODE_CONTACT_UPDATES = "source_code_contacts"
-SOURCE_CODE_DEID = "source_code_deidentified"
-
 RECORD_ID_FIELD = "sub_id"
 GUID_FIELD = "guid"
 
@@ -116,16 +109,6 @@ def build_full_dictionary() -> list[dict]:
             note="Global unique identifier for the participant.",
         )
     )
-    rows.append(
-        _row(
-            SOURCE_CODE_PARTICIPANT,
-            form,
-            "Source code",
-            "text",
-            required="y",
-            note=SOURCE_CODE_NOTE,
-        )
-    )
     rows.append(_row("first_name", form, "First name", "text", identifier="y", required="y"))
     rows.append(_row("last_name", form, "Last name", "text", identifier="y", required="y"))
     rows.append(
@@ -173,16 +156,6 @@ def build_full_dictionary() -> list[dict]:
             choices="participant, participant | guardian, guardian",
         )
     )
-    rows.append(
-        _row(
-            SOURCE_CODE_VISITS,
-            form,
-            "Source code",
-            "text",
-            required="y",
-            note=SOURCE_CODE_NOTE,
-        )
-    )
 
     # Contact updates instrument (repeating)
     form = "contact_updates"
@@ -200,16 +173,6 @@ def build_full_dictionary() -> list[dict]:
     rows.append(_row("added_at", form, "Added at", "text", validation="datetime_ymd"))
     rows.append(_row("contact_visit_number", form, "Visit number", "text", validation="integer"))
     rows.append(_row("contact_visit_datetime", form, "Visit datetime", "text", validation="datetime_ymd"))
-    rows.append(
-        _row(
-            SOURCE_CODE_CONTACT_UPDATES,
-            form,
-            "Source code",
-            "text",
-            required="y",
-            note=SOURCE_CODE_NOTE,
-        )
-    )
 
     return rows
 
@@ -237,16 +200,6 @@ def build_deidentified_dictionary() -> list[dict]:
             required="y",
             identifier="y",
             note="Global unique identifier for the participant.",
-        )
-    )
-    rows.append(
-        _row(
-            SOURCE_CODE_DEID,
-            form,
-            "Source code",
-            "text",
-            required="y",
-            note=SOURCE_CODE_NOTE,
         )
     )
     rows.append(_row("visit_number", form, "Visit number", "text", validation="integer", required="y"))
