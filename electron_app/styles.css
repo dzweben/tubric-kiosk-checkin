@@ -38,6 +38,10 @@ body {
   gap: 10px;
 }
 
+.card.center {
+  text-align: center;
+}
+
 .hidden {
   display: none;
 }
@@ -94,6 +98,10 @@ p {
   align-items: center;
 }
 
+.actions.center {
+  justify-content: center;
+}
+
 .actions.split {
   justify-content: center;
 }
@@ -126,8 +134,9 @@ p {
 
 .btn.ghost {
   background: transparent;
-  color: #64748b;
+  color: #334155;
   padding: 10px 0;
+  font-size: 17px;
 }
 
 .btn:hover {

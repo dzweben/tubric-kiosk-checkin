@@ -8,21 +8,16 @@
   </head>
   <body>
     <main class="kiosk">
-      <section class="card" id="screen-welcome">
+      <section class="card center" id="screen-welcome">
         <header class="brand">
           <div class="brand-title">TUBRIC Check-In</div>
           <div class="brand-subtitle">Temple University Brain Research Imaging Center</div>
         </header>
 
         <h1>Welcome to TUBRIC</h1>
-        <p class="lead">
-          Please follow the prompts to check in for your visit today.
-        </p>
-        <p class="muted">
-          If you are a parent/guardian completing this, please enter the
-          participant's information.
-        </p>
-        <div class="actions">
+        <p class="lead">Tap below to begin your check-in.</p>
+        <p class="muted">Parents/guardians: please enter the participant's information.</p>
+        <div class="actions center">
           <button class="btn primary" data-next="screen-consent">Start Check-In</button>
         </div>
       </section>
@@ -33,12 +28,13 @@
           <div class="brand-subtitle">Contact Permission</div>
         </header>
         <h2>May we contact you about future research opportunities?</h2>
-        <p class="muted">We will save your information regardless of your choice.</p>
         <div class="actions split">
           <button class="btn primary" data-consent="Yes">Yes, contact me</button>
           <button class="btn secondary" data-consent="No">No, do not contact me</button>
         </div>
-        <button class="btn ghost" data-back>← Back</button>
+        <div class="actions center">
+          <button class="btn ghost" data-back>← Back</button>
+        </div>
       </section>
 
       <section class="card hidden" id="screen-role">
