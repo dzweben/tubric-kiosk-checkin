@@ -3,24 +3,31 @@
 This file defines the minimal REDCap structure and variables that match the kiosk CSV source-of-truth.
 
 **Record Structure**
-- One REDCap record per `guid`.
+- One REDCap record per participant.
+- `record_id` is required and distinct from `guid`.
 - Use repeating instruments for visits and contact updates.
-- Recommended record_id: set `record_id` = `guid` (text). If you require numeric IDs, keep `guid` as a required field and use auto-numbering for `record_id`.
 
 **Instrument: Participant (non-repeating)**
 Fields:
-- `guid` (text, unique)
+- `sub_id` (text, required; REDCap record ID field)
+- `guid` (text, unique, required)
 - `first_name` (text)
 - `last_name` (text)
 - `dob` (date, format `YYYY-MM-DD`)
 - `primary_email` (email)
 - `primary_phone` (text, 10 digits)
-- `consent_contact` (yes/no)
+- `newsletter_email` (email; newsletter contact email)
+- `newsletter_phone` (text; newsletter contact phone)
+- `newsletter_pref` (enum: `participant_only`, `guardian_only`, `both`)
+- `consent_participant` (yes/no)
 - `created_at` (datetime)
 - `last_seen_at` (datetime)
+- `source_code_participant` (text, required)
 
 Notes:
-- `secondary_emails` and `secondary_phones` are captured in the contact updates instrument below. Avoid pipe-delimited text in REDCap if you can.
+- Secondary emails/phones are captured as rows in the contact updates instrument below (no pipe-delimited fields in REDCap).
+- `newsletter_email` / `newsletter_phone` are captured from the guardian popup when provided. If the popup is skipped, set them to the participant’s primary email/phone.
+- `newsletter_pref` indicates whether the newsletter should go only to the guardian contact info, only to the participant contact info, or to both.
 
 **Instrument: Visits (repeating)**
 Fields:
@@ -29,26 +36,30 @@ Fields:
 - `visit_date` (date)
 - `visit_time` (time)
 - `tubric_study_code` (text)
-- `consent_contact` (yes/no, per-visit)
+- `consent_contact_visit` (yes/no, per-visit)
 - `entered_by` (enum: `participant`, `guardian`)
+- `source_code_visits` (text, required)
 
 **Instrument: Contact Updates (repeating)**
 Fields:
-- `contact_type` (enum: `email`, `phone`)
+- `contact_type` (enum: `email`, `phone`, `newsletter_email`, `newsletter_phone`)
 - `contact_value` (text)
 - `added_at` (datetime)
-- `visit_number` (integer)
-- `visit_datetime` (datetime)
+- `contact_visit_number` (integer)
+- `contact_visit_datetime` (datetime)
+- `source_code_contacts` (text, required)
 
 **Optional: De-identified Project or Instrument**
 Source file: `/Users/dannyzweben/Desktop/TUBRIC/Database/db_exports/deidentified_visits.csv`
 Fields:
+- `sub_id` (text, required; REDCap record ID field)
 - `guid`
 - `visit_number`
 - `visit_datetime`
 - `visit_date`
 - `visit_time`
 - `tubric_study_code`
+- `source_code_deidentified` (text, required)
 
 **CSV Source Mapping**
 Full identifiable data (private):
