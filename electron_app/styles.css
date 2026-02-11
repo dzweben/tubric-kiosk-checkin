@@ -53,6 +53,10 @@ body {
   gap: 12px;
 }
 
+.card.screen-center {
+  justify-content: center;
+}
+
 .card.center {
   text-align: center;
 }
