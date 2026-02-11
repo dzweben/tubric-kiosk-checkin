@@ -189,6 +189,20 @@ p {
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
   padding: 40px 48px;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  height: 40px;
+  width: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  font-size: 22px;
+  cursor: pointer;
 }
 
 .btn:hover {

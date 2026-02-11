@@ -9,6 +9,7 @@ const state = {
   phone: "",
   tubric_study_code: "",
 };
+let guardianNoticeShown = false;
 
 function showScreen(id) {
   screens.forEach((s) => s.classList.add("hidden"));
@@ -61,7 +62,7 @@ function setInfoSubtitle() {
   const sub = document.getElementById("info-subtitle");
   if (state.is_guardian === "guardian") {
     sub.textContent =
-      "You indicated you are a parent/guardian. Please enter the participant's information below.";
+      "You indicated you are a parent/guardian. Please enter the participant's information below. If the participant does not have an email or phone, you may enter your own.";
   } else {
     sub.textContent = "Please enter your information below.";
   }
@@ -73,6 +74,9 @@ document.querySelectorAll("[data-next]").forEach((btn) => {
 
 const contactModal = document.getElementById("contact-modal");
 const contactModalOk = document.getElementById("contact-modal-ok");
+const guardianModal = document.getElementById("guardian-contact-modal");
+const guardianModalOk = document.getElementById("guardian-contact-ok");
+const guardianModalClose = document.getElementById("guardian-contact-close");
 
 document.querySelectorAll("[data-consent]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -167,8 +171,22 @@ document.getElementById("info-continue").addEventListener("click", () => {
   state.email = email;
   state.phone = phone;
 
+  if (state.is_guardian === "guardian" && state.consent_contact === "Yes" && !guardianNoticeShown) {
+    guardianNoticeShown = true;
+    guardianModal.classList.remove("hidden");
+    return;
+  }
+
   showScreen("screen-study");
 });
+
+function closeGuardianModal() {
+  guardianModal.classList.add("hidden");
+  showScreen("screen-study");
+}
+
+guardianModalOk.addEventListener("click", closeGuardianModal);
+guardianModalClose.addEventListener("click", closeGuardianModal);
 
 document.getElementById("finish").addEventListener("click", async () => {
   const error = document.getElementById("study-error");
