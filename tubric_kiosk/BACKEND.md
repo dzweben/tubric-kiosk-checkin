@@ -102,3 +102,14 @@ If `tubric_profiles.json` exists and the new DB files do not, the app performs a
   - `db_exports/deidentified_visits.csv`
 - De-identified Git push helper:
   - `push_deidentified_to_git.py` copies `deidentified_visits.csv` into the repo and runs `git add/commit/push`.
+
+## REDCap Autopush (Optional)
+If enabled, each completed check-in will push a matching participant update, new visit instance, and any new contact updates to REDCap.
+
+Configuration (environment variables):
+- `TUBRIC_REDCAP_AUTOPUSH=1` to enable
+- `TUBRIC_REDCAP_API_URL=https://cphapps.temple.edu/redcap/api/`
+- `TUBRIC_REDCAP_TOKEN_PATH=/Users/dannyzweben/Desktop/TUBRIC/Database/RDCAPI/key.txt`
+
+Script used:
+- `redcap_build/push_checkin_to_redcap.py`

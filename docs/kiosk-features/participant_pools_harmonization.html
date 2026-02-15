@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Participant Pools & Cross-Project Harmonization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f23 100%);
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            color: #e0e0e0;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding: 40px;
+            background: rgba(0, 122, 204, 0.05);
+            border: 2px solid #007acc;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 122, 204, 0.1), transparent);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0%, 100% { left: -100%; }
+            50% { left: 100%; }
+        }
+
+        .header h1 {
+            font-size: 40px;
+            color: #4fc3f7;
+            margin-bottom: 12px;
+            text-shadow: 0 0 20px rgba(79, 195, 247, 0.3);
+        }
+
+        .header .subtitle {
+            font-size: 18px;
+            color: #9cdcfe;
+            margin-bottom: 16px;
+        }
+
+        .header .tagline {
+            font-size: 14px;
+            color: #858585;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            color: #4ec9b0;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #858585;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+            opacity: 0;
+            animation: fadeInUp 0.8s forwards;
+        }
+
+        .section:nth-child(1) { animation-delay: 0.2s; }
+        .section:nth-child(2) { animation-delay: 0.4s; }
+        .section:nth-child(3) { animation-delay: 0.6s; }
+        .section:nth-child(4) { animation-delay: 0.8s; }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-title {
+            font-size: 28px;
+            color: #4fc3f7;
+            margin-bottom: 25px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #007acc;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title::before {
+            content: '▸';
+            color: #007acc;
+            font-size: 32px;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .module-card {
+            background: rgba(30, 30, 30, 0.6);
+            border: 1px solid #3e3e42;
+            border-left: 4px solid #007acc;
+            border-radius: 8px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .module-card:hover {
+            border-left-color: #4fc3f7;
+            background: rgba(30, 30, 30, 0.8);
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(79, 195, 247, 0.2);
+        }
+
+        .module-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .module-icon {
+            font-size: 24px;
+        }
+
+        .module-title {
+            font-size: 20px;
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+
+        .module-description {
+            color: #d4d4d4;
+            margin-bottom: 15px;
+            line-height: 1.7;
+        }
+
+        .code-snippet {
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .code-snippet pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .keyword { color: #569cd6; }
+        .string { color: #ce9178; }
+        .function { color: #dcdcaa; }
+        .comment { color: #6a9955; font-style: italic; }
+        .variable { color: #9cdcfe; }
+        .number { color: #b5cea8; }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .tech-badge {
+            background: rgba(0, 122, 204, 0.2);
+            border: 1px solid #007acc;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #4fc3f7;
+        }
+
+        .flow-diagram {
+            background: rgba(30, 30, 30, 0.4);
+            border: 1px solid #3e3e42;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            gap: 15px;
+        }
+
+        .flow-number {
+            background: #007acc;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .flow-arrow {
+            color: #007acc;
+            font-size: 24px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .flow-content {
+            flex: 1;
+        }
+
+        .flow-title {
+            color: #4fc3f7;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .flow-description {
+            color: #d4d4d4;
+            font-size: 14px;
+        }
+
+        .highlight-box {
+            background: rgba(78, 201, 176, 0.1);
+            border-left: 4px solid #4ec9b0;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .highlight-box strong {
+            color: #4ec9b0;
+        }
+
+        .api-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .api-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #3e3e42;
+            color: #d4d4d4;
+        }
+
+        .api-list li:last-child {
+            border-bottom: none;
+        }
+
+        .api-list li::before {
+            content: '◆';
+            color: #007acc;
+            margin-right: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px;
+            margin-top: 60px;
+            border-top: 2px solid #3e3e42;
+            color: #858585;
+        }
+
+        .security-notice {
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #ffd54f;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3e3e42;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4e4e52;
+        }
+
+        @media (max-width: 768px) {
+            .module-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 28px;
+            }
+
+            .stats-bar {
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Participant Pools & Cross-Project Harmonization</h1>
+            <div class="subtitle">Create a single point of entry, generate stable IDs, and support IRB‑safe coordination across labs.</div>
+            <div class="tagline">Participant pools and cross-project harmonization</div>
+
+            <div class="stats-bar">
+                <div class="stat">
+                    <div class="stat-number">Single</div>
+                    <div class="stat-label">Point of Entry</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">Stable</div>
+                    <div class="stat-label">GUIDs</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">De‑ID</div>
+                    <div class="stat-label">Exports</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">Auto</div>
+                    <div class="stat-label">REDCap Push</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">Repeat</div>
+                    <div class="stat-label">Visits</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Overview</h2>
+            <div class="highlight-box">
+                <strong>The Challenge:</strong> Multiple labs collect overlapping participant data, creating duplicate records, inconsistent IDs, and unsafe sharing of identifiable information.
+                <br><br>
+                <strong>The Solution:</strong> A single kiosk‑driven intake flow that standardizes participant data, generates stable GUIDs, and pushes harmonized records to REDCap while maintaining an IRB‑safe de‑identified export path.
+            </div>
+
+            <div class="tech-stack">
+                <div class="tech-badge">Python</div>
+                <div class="tech-badge">REDCap API</div>
+                <div class="tech-badge">CSV Source‑of‑Truth</div>
+                <div class="tech-badge">GUID Matching</div>
+                <div class="tech-badge">De‑ID Export</div>
+                <div class="tech-badge">Autopush</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">System Architecture</h2>
+
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <div class="flow-number">1</div>
+                    <div class="flow-content">
+                        <div class="flow-title">Single Point of Entry</div>
+                        <div class="flow-description">Participant or guardian completes a unified check‑in flow across labs/projects.</div>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">↓</div>
+
+                <div class="flow-step">
+                    <div class="flow-number">2</div>
+                    <div class="flow-content">
+                        <div class="flow-title">Identity Resolution + Stable GUID</div>
+                        <div class="flow-description">DOB‑first matching with name/email/phone validation to prevent duplicates; GUID is created or reused.</div>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">↓</div>
+
+                <div class="flow-step">
+                    <div class="flow-number">3</div>
+                    <div class="flow-content">
+                        <div class="flow-title">Harmonized REDCap Push</div>
+                        <div class="flow-description">Creates new records or appends repeat visits and contact updates to existing records via API.</div>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">↓</div>
+
+                <div class="flow-step">
+                    <div class="flow-number">4</div>
+                    <div class="flow-content">
+                        <div class="flow-title">IRB‑Safe De‑ID Export</div>
+                        <div class="flow-description">A parallel de‑identified export supports cross‑project coordination without exposing PHI.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Core Modules</h2>
+
+            <div class="module-grid">
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">🧭</div>
+                        <div class="module-title">Unified Intake</div>
+                    </div>
+                    <div class="module-description">
+                        Single intake flow for participants and guardians. Captures core demographics, contact permission, and visit context.
+                    </div>
+
+                    <div class="code-snippet">
+<pre><span class="comment"># Kiosk state normalized into canonical fields</span>
+<span class="keyword">state</span> = {
+  <span class="string">"first_name"</span>: <span class="string">"Ada"</span>,
+  <span class="string">"last_name"</span>: <span class="string">"Lovelace"</span>,
+  <span class="string">"dob"</span>: <span class="string">"2001-04-15"</span>,
+  <span class="string">"consent_contact"</span>: <span class="string">"Yes"</span>,
+  <span class="string">"tubric_study_code"</span>: <span class="string">"LAB-A"</span>
+}</pre>
+                    </div>
+
+                    <div class="tech-stack">
+                        <div class="tech-badge">Kiosk UI</div>
+                        <div class="tech-badge">Normalization</div>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">🧩</div>
+                        <div class="module-title">GUID Matching Engine</div>
+                    </div>
+                    <div class="module-description">
+                        DOB‑first matching with name/email/phone scoring to avoid duplicate records and maintain stable IDs.
+                    </div>
+
+                    <div class="code-snippet">
+<pre><span class="comment"># DOB-first match with identity confirmation</span>
+<span class="keyword">if</span> dob_match:
+    score = (name_match * <span class="number">2</span>) + email_match + phone_match
+    <span class="keyword">if</span> score >= <span class="number">2</span>:
+        guid = existing_guid
+    <span class="keyword">else</span>:
+        guid = new_guid()</pre>
+                    </div>
+
+                    <div class="tech-stack">
+                        <div class="tech-badge">GUID</div>
+                        <div class="tech-badge">Deduping</div>
+                        <div class="tech-badge">Scoring</div>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">🔁</div>
+                        <div class="module-title">Repeat Visit Capture</div>
+                    </div>
+                    <div class="module-description">
+                        Every check‑in appends a new visit instance with timestamped visit metadata.
+                    </div>
+
+                    <div class="code-snippet">
+<pre><span class="comment"># Visit instance stored as repeating instrument</span>
+visit = {
+  <span class="string">"visit_number"</span>: next_instance,
+  <span class="string">"visit_datetime"</span>: now_iso,
+  <span class="string">"visit_date"</span>: date,
+  <span class="string">"visit_time"</span>: time
+}</pre>
+                    </div>
+
+                    <div class="tech-stack">
+                        <div class="tech-badge">Repeating Instruments</div>
+                        <div class="tech-badge">Visit Log</div>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">📬</div>
+                        <div class="module-title">Newsletter Preferences</div>
+                    </div>
+                    <div class="module-description">
+                        Handles guardian‑specific newsletter contact info and delivery preferences (participant only, guardian only, or both).
+                    </div>
+
+                    <div class="code-snippet">
+<pre><span class="comment"># Fallback to participant contact if guardian info absent</span>
+newsletter_email = guardian_email or participant_email
+newsletter_phone = guardian_phone or participant_phone
+newsletter_pref = selected_pref or <span class="string">"participant_only"</span></pre>
+                    </div>
+
+                    <div class="tech-stack">
+                        <div class="tech-badge">Consent</div>
+                        <div class="tech-badge">Preferences</div>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">🔌</div>
+                        <div class="module-title">REDCap Autopush</div>
+                    </div>
+                    <div class="module-description">
+                        Each completed check‑in pushes a harmonized record update to REDCap, appending repeat visits and contact updates.
+                    </div>
+
+                    <div class="code-snippet">
+<pre><span class="comment"># Lookup by GUID and append repeat instances</span>
+record_id = find_record_id(api_url, guid)
+repeat_max = get_repeat_instance_max(api_url, guid)
+import_records(api_url, payload_with_repeat_instances)</pre>
+                    </div>
+
+                    <div class="tech-stack">
+                        <div class="tech-badge">REDCap API</div>
+                        <div class="tech-badge">Scripted Push</div>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">🕶️</div>
+                        <div class="module-title">De‑Identified Exports</div>
+                    </div>
+                    <div class="module-description">
+                        Parallel de‑identified exports allow safe, cross‑project reporting without exposing PHI.
+                    </div>
+
+                    <div class="code-snippet">
+<pre><span class="comment"># De‑ID export includes visit metadata only</span>
+fields = [<span class="string">"guid"</span>, <span class="string">"visit_number"</span>, <span class="string">"visit_datetime"</span>, <span class="string">"tubric_study_code"</span>]
+write_deidentified_csv(fields)</pre>
+                    </div>
+
+                    <div class="tech-stack">
+                        <div class="tech-badge">IRB‑Safe</div>
+                        <div class="tech-badge">Cross‑Project</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">API Integrations</h2>
+
+            <ul class="api-list">
+                <li><strong style="color: #4fc3f7;">REDCap API</strong> — Record lookup by GUID, repeating‑instrument imports, and harmonized record updates</li>
+                <li><strong style="color: #4fc3f7;">Local CSV Source‑of‑Truth</strong> — Canonical storage for matching, repeat visits, and contact updates</li>
+            </ul>
+
+            <div class="security-notice">
+                <strong>🔐 Security Notice:</strong> API tokens remain local and are never embedded in the UI. All REDCap actions are executed via saved scripts in the repository.
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Impact Metrics</h2>
+
+            <div class="module-grid">
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">⏱️</div>
+                        <div class="module-title">Fewer Duplicates</div>
+                    </div>
+                    <div class="module-description">
+                        GUID matching and consent‑aware contact logic eliminate duplicate records across labs and projects.
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">🧭</div>
+                        <div class="module-title">Single Entry Point</div>
+                    </div>
+                    <div class="module-description">
+                        One consistent intake experience creates harmonized fields for all downstream projects.
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">🧪</div>
+                        <div class="module-title">IRB‑Safe Sharing</div>
+                    </div>
+                    <div class="module-description">
+                        De‑identified exports enable coordination without exposing PHI to collaborators.
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">✅</div>
+                        <div class="module-title">Repeat‑Ready</div>
+                    </div>
+                    <div class="module-description">
+                        Repeating instruments keep visit history intact for longitudinal tracking.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Technical Workflow</h2>
+
+            <div class="highlight-box">
+                <strong>Event‑Driven Check‑In:</strong>
+                <ol style="margin-top: 15px; padding-left: 20px; color: #d4d4d4;">
+                    <li style="margin-bottom: 10px;"><strong style="color: #4ec9b0;">Step 1</strong> — Participant completes kiosk intake</li>
+                    <li style="margin-bottom: 10px;"><strong style="color: #4ec9b0;">Step 2</strong> — GUID match + visit creation</li>
+                    <li style="margin-bottom: 10px;"><strong style="color: #4ec9b0;">Step 3</strong> — REDCap autopush appends repeat visit</li>
+                    <li style="margin-bottom: 10px;"><strong style="color: #4ec9b0;">Step 4</strong> — De‑identified export updates</li>
+                </ol>
+            </div>
+
+            <div class="code-snippet" style="margin-top: 25px;">
+<pre><span class="comment"># Autopush enabled by environment variables</span>
+<span class="keyword">export</span> TUBRIC_REDCAP_AUTOPUSH=<span class="number">1</span>
+<span class="keyword">export</span> TUBRIC_REDCAP_API_URL=<span class="string">"https://cphapps.temple.edu/redcap/api/"</span>
+<span class="keyword">export</span> TUBRIC_REDCAP_TOKEN_PATH=<span class="string">"/Users/dannyzweben/Desktop/TUBRIC/Database/RDCAPI/key.txt"</span></pre>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div style="font-size: 18px; color: #4fc3f7; margin-bottom: 15px;">
+                Participant Pools & Cross‑Project Harmonization
+            </div>
+            <div style="font-size: 14px;">
+                Single point of entry • Stable GUIDs • IRB‑safe de‑identified exports
+            </div>
+            <div style="font-size: 12px; margin-top: 10px; color: #6a9955;">
+                Built for multi‑lab coordination and longitudinal research pipelines
+            </div>
+        </div>
+    </div>
+</body>
+</html>

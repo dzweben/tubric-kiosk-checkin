@@ -64,6 +64,31 @@ def import_records(api_url: str, token: str, csv_text: str, *, overwrite: str = 
     return _post_form(api_url, payload)
 
 
+def export_records(
+    api_url: str,
+    token: str,
+    *,
+    fields: list[str] | None = None,
+    filter_logic: str | None = None,
+    format: str = "json",
+    export_repeating: bool = True,
+) -> str:
+    payload: dict[str, str] = {
+        "token": token,
+        "content": "record",
+        "format": format,
+        "type": "flat",
+        "rawOrLabel": "raw",
+        "returnFormat": "json",
+        "exportRepeatingInstruments": "true" if export_repeating else "false",
+    }
+    if fields:
+        payload["fields"] = ",".join(fields)
+    if filter_logic:
+        payload["filterLogic"] = filter_logic
+    return _post_form(api_url, payload)
+
+
 def summarize_response(raw: str) -> str:
     raw = raw.strip()
     if not raw:

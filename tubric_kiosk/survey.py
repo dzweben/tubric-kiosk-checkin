@@ -519,6 +519,116 @@ def auto_push_deidentified():
         pass
 
 
+def _build_redcap_payload(guid, person, participant, visit, visit_datetime):
+    primary_email = ""
+    primary_phone = ""
+    if participant:
+        primary_email = participant.get("email", "") or ""
+        primary_phone = participant.get("phone", "") or ""
+    if not primary_email:
+        primary_email = person.get("primary_email", "")
+    if not primary_phone:
+        primary_phone = person.get("primary_phone", "")
+
+    newsletter_email = ""
+    newsletter_phone = ""
+    newsletter_pref = ""
+    if participant:
+        newsletter_emails = participant.get("newsletter_emails", [])
+        newsletter_phones = participant.get("newsletter_phones", [])
+        newsletter_email = newsletter_emails[0] if newsletter_emails else ""
+        newsletter_phone = newsletter_phones[0] if newsletter_phones else ""
+        newsletter_pref = participant.get("newsletter_pref", "")
+    if not newsletter_email:
+        newsletter_email = primary_email
+    if not newsletter_phone:
+        newsletter_phone = primary_phone
+    if not newsletter_pref:
+        newsletter_pref = "participant_only"
+
+    consent_participant = participant.get("consent_contact", "") if participant else ""
+    created_at = participant.get("created_at", "") if participant else ""
+    last_seen_at = person.get("last_seen_at", "")
+
+    contact_updates_source = []
+    if participant:
+        contact_updates_source = participant.get("contact_updates", []) or []
+    if not contact_updates_source:
+        contact_updates_source = person.get("contact_updates", []) or []
+
+    contact_updates = []
+    for idx, cu in enumerate(contact_updates_source, start=1):
+        if cu.get("visit_datetime") != visit_datetime:
+            continue
+        contact_updates.append(
+            {
+                "instance": idx,
+                "contact_type": cu.get("type", ""),
+                "contact_value": cu.get("value", ""),
+                "added_at": cu.get("added_at", ""),
+                "contact_visit_number": cu.get("visit_number", ""),
+                "contact_visit_datetime": cu.get("visit_datetime", ""),
+            }
+        )
+
+    payload = {
+        "guid": guid,
+        "participant": {
+            "first_name": person.get("first_name", ""),
+            "last_name": person.get("last_name", ""),
+            "dob": person.get("dob", ""),
+            "primary_email": primary_email,
+            "primary_phone": primary_phone,
+            "newsletter_email": newsletter_email,
+            "newsletter_phone": newsletter_phone,
+            "newsletter_pref": newsletter_pref,
+            "consent_participant": consent_participant,
+            "created_at": created_at,
+            "last_seen_at": last_seen_at,
+        },
+        "visit": {
+            "visit_number": visit.get("visit_number", ""),
+            "visit_datetime": visit.get("visit_datetime", ""),
+            "visit_date": visit.get("visit_date", ""),
+            "visit_time": visit.get("visit_time", ""),
+            "tubric_study_code": visit.get("tubric_study_code", ""),
+            "consent_contact_visit": visit.get("consent_contact", ""),
+            "entered_by": visit.get("entered_by", ""),
+        },
+        "contact_updates": contact_updates,
+    }
+    return payload
+
+
+def auto_push_redcap(payload):
+    """
+    Push a single check-in to REDCap if autopush is enabled.
+    Safe to ignore failures to keep kiosk flow uninterrupted.
+    """
+    api_url = os.environ.get("TUBRIC_REDCAP_API_URL", "").strip()
+    if not api_url:
+        return
+    if os.environ.get("TUBRIC_REDCAP_AUTOPUSH", "").lower() not in ("1", "true", "yes"):
+        return
+
+    token_path = os.environ.get("TUBRIC_REDCAP_TOKEN_PATH", os.path.join(BASE_DIR, "RDCAPI", "key.txt"))
+    script = os.path.join(BASE_DIR, "redcap_build", "push_checkin_to_redcap.py")
+
+    try:
+        import subprocess
+        import json
+
+        subprocess.run(
+            [_python_executable(), script, "--api-url", api_url, "--token-path", token_path, "--execute"],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except Exception:
+        pass
+
+
 def submit_checkin(state, guid_db=None, participants_db=None):
     """
     Core save path used by both Tk UI and Electron.
@@ -687,6 +797,10 @@ def submit_checkin(state, guid_db=None, participants_db=None):
     export_participants_csv(participants_db)
     export_deidentified_visits(participants_db)
     auto_push_deidentified()
+
+    person_ref = existing if existing else person
+    payload = _build_redcap_payload(guid, person_ref, participant, visit, visit_datetime)
+    auto_push_redcap(payload)
 
     return guid, action, guid_db, participants_db
 

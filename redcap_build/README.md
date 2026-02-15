@@ -77,3 +77,12 @@ python3 /Users/dannyzweben/Desktop/TUBRIC/Database/redcap_build/run_build_and_pu
   --push-full \\
   --execute
 ```
+
+## Kiosk Autopush (Per Check-In)
+Each check-in can be pushed to REDCap automatically via:
+- `/Users/dannyzweben/Desktop/TUBRIC/Database/redcap_build/push_checkin_to_redcap.py`
+
+This script is invoked by the kiosk when the following environment variables are set:
+- `TUBRIC_REDCAP_AUTOPUSH=1`
+- `TUBRIC_REDCAP_API_URL=https://cphapps.temple.edu/redcap/api/`
+- `TUBRIC_REDCAP_TOKEN_PATH=/Users/dannyzweben/Desktop/TUBRIC/Database/RDCAPI/key.txt`
