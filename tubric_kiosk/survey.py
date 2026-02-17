@@ -622,7 +622,7 @@ def _format_redcap_time(value: str) -> str:
     # Accept HH:MM or HH:MM:SS
     parts = value.split(":")
     if len(parts) >= 2:
-        return f\"{parts[0].zfill(2)}:{parts[1].zfill(2)}\"
+        return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}"
     return value
 
 
@@ -639,21 +639,17 @@ def auto_push_redcap(payload, guid_db=None, participants_db=None):
     try:
         if REDCAP_BUILD_DIR not in sys.path:
             sys.path.insert(0, REDCAP_BUILD_DIR)
-        from redcap_api_client import read_token, export_records, import_records, RedcapApiError
-        from push_checkin_to_redcap import (
-            find_record_id,
-            get_repeat_instance_max,
-            build_import_rows,
-            rows_to_csv,
-        )
+        from redcap_api_client import read_token, export_records, import_records
+        from push_checkin_to_redcap import build_import_rows, rows_to_csv
 
         token = read_token(token_path)
         guid = payload.get("guid", "")
         if not guid:
             return False
 
-        record_id = find_record_id(api_url, token, guid) or guid
-        repeat_max = get_repeat_instance_max(api_url, token, guid)
+        # Use GUID as record_id (sub_id) to avoid export-permission issues on guid field.
+        record_id = guid
+        repeat_max = _get_repeat_instance_max(api_url, token, record_id)
         rows = build_import_rows(payload, record_id, repeat_max)
         csv_text = rows_to_csv(rows)
 
@@ -666,6 +662,40 @@ def auto_push_redcap(payload, guid_db=None, participants_db=None):
         return True
     except Exception:
         return False
+
+
+def _get_repeat_instance_max(api_url: str, token: str, record_id: str) -> dict:
+    """
+    Compute max repeat instance numbers for a record using sub_id filter
+    (avoids guid export permissions).
+    """
+    try:
+        if REDCAP_BUILD_DIR not in sys.path:
+            sys.path.insert(0, REDCAP_BUILD_DIR)
+        from redcap_api_client import export_records
+    except Exception:
+        return {"visits": 0, "contact_updates": 0}
+
+    filter_logic = f"[sub_id] = '{record_id}'"
+    raw = export_records(api_url, token, filter_logic=filter_logic, export_repeating=True)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {"visits": 0, "contact_updates": 0}
+
+    max_by = {"visits": 0, "contact_updates": 0}
+    for row in data:
+        instrument = row.get("redcap_repeat_instrument")
+        instance = row.get("redcap_repeat_instance")
+        if not instrument or instrument not in max_by:
+            continue
+        try:
+            instance_num = int(instance)
+        except (TypeError, ValueError):
+            continue
+        if instance_num > max_by[instrument]:
+            max_by[instrument] = instance_num
+    return max_by
 
 
 def _read_redcap_api_url() -> str:
@@ -709,8 +739,11 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
     if base.get("guid") and base.get("guid") != guid:
         return False
 
+    # Only validate fields that are actually returned by export (API rights may hide identifiers).
     expected = payload.get("participant", {})
     for field in ("first_name", "last_name", "dob", "primary_email", "primary_phone"):
+        if field not in base or base.get(field, "") == "":
+            continue
         expected_val = expected.get(field, "")
         if expected_val and base.get(field, "") != expected_val:
             return False
@@ -719,12 +752,14 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
     visit_dt = visit.get("visit_datetime", "")
     visit_code = visit.get("tubric_study_code", "")
     if visit_dt:
-        for row in data:
-            if row.get("redcap_repeat_instrument") != "visits":
-                continue
-            if row.get("visit_datetime") == visit_dt and row.get("tubric_study_code") == visit_code:
-                return True
-        return False
+        any_visit_field = any("visit_datetime" in row or "tubric_study_code" in row for row in data)
+        if any_visit_field:
+            for row in data:
+                if row.get("redcap_repeat_instrument") != "visits":
+                    continue
+                if row.get("visit_datetime") == visit_dt and row.get("tubric_study_code") == visit_code:
+                    return True
+            return False
 
     return True
 
