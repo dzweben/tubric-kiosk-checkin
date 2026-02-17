@@ -589,7 +589,7 @@ def _build_redcap_payload(guid, person, participant, visit, visit_datetime):
             "newsletter_email": newsletter_email,
             "newsletter_phone": newsletter_phone,
             "newsletter_pref": newsletter_pref,
-            "consent_participant": consent_participant,
+            "consent_participant": _yesno_to_redcap(consent_participant),
             "created_at": created_at,
             "last_seen_at": last_seen_at,
         },
@@ -597,14 +597,33 @@ def _build_redcap_payload(guid, person, participant, visit, visit_datetime):
             "visit_number": visit.get("visit_number", ""),
             "visit_datetime": visit.get("visit_datetime", ""),
             "visit_date": visit.get("visit_date", ""),
-            "visit_time": visit.get("visit_time", ""),
+            "visit_time": _format_redcap_time(visit.get("visit_time", "")),
             "tubric_study_code": visit.get("tubric_study_code", ""),
-            "consent_contact_visit": visit.get("consent_contact", ""),
+            "consent_contact_visit": _yesno_to_redcap(visit.get("consent_contact", "")),
             "entered_by": visit.get("entered_by", ""),
         },
         "contact_updates": contact_updates,
     }
     return payload
+
+
+def _yesno_to_redcap(value: str) -> str:
+    v = (value or "").strip().lower()
+    if v in ("yes", "y", "1", "true"):
+        return "1"
+    if v in ("no", "n", "0", "false"):
+        return "0"
+    return ""
+
+
+def _format_redcap_time(value: str) -> str:
+    if not value:
+        return ""
+    # Accept HH:MM or HH:MM:SS
+    parts = value.split(":")
+    if len(parts) >= 2:
+        return f\"{parts[0].zfill(2)}:{parts[1].zfill(2)}\"
+    return value
 
 
 def auto_push_redcap(payload, guid_db=None, participants_db=None):
@@ -669,7 +688,8 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
     except Exception:
         return False
 
-    filter_logic = f"[guid] = '{guid}'"
+    # Prefer record ID lookup to avoid export-permission issues on guid field.
+    filter_logic = f"[sub_id] = '{guid}'"
     raw = export_records(api_url, token, filter_logic=filter_logic, export_repeating=True)
     try:
         data = json.loads(raw)
@@ -685,7 +705,8 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
             break
     if not base:
         return False
-    if base.get("guid", "") != guid:
+    # If guid is available in export, confirm it matches; otherwise skip.
+    if base.get("guid") and base.get("guid") != guid:
         return False
 
     expected = payload.get("participant", {})
