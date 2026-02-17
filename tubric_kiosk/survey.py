@@ -5,6 +5,8 @@ import os
 import re
 import uuid
 import csv
+import json
+import sys
 
 APP_TITLE = "TUBRIC Check-In"
 SITE_NAME = "TUBRIC"
@@ -50,6 +52,9 @@ PARTICIPANT_VISITS_CSV = os.path.join(FULL_EXPORT_DIR, "participant_visits.csv")
 PARTICIPANT_CONTACT_UPDATES_CSV = os.path.join(FULL_EXPORT_DIR, "participant_contact_updates.csv")
 
 DEID_EXPORT_FILE = os.path.join(DEID_EXPORT_DIR, "deidentified_visits.csv")
+
+REDCAP_BUILD_DIR = os.path.join(BASE_DIR, "redcap_build")
+REDCAP_DEFAULT_TOKEN_PATH = os.path.join(BASE_DIR, "RDCAPI", "key.txt")
 
 ## CODE COMPLETE!
 
@@ -600,33 +605,136 @@ def _build_redcap_payload(guid, person, participant, visit, visit_datetime):
     return payload
 
 
-def auto_push_redcap(payload):
+def auto_push_redcap(payload, guid_db=None, participants_db=None):
     """
     Push a single check-in to REDCap if autopush is enabled.
-    Safe to ignore failures to keep kiosk flow uninterrupted.
+    If push + verification succeed, scrub local PII and keep GUID + visits.
     """
     api_url = os.environ.get("TUBRIC_REDCAP_API_URL", "").strip()
     if not api_url:
-        return
+        return False
     if os.environ.get("TUBRIC_REDCAP_AUTOPUSH", "").lower() not in ("1", "true", "yes"):
-        return
+        return False
 
     token_path = os.environ.get("TUBRIC_REDCAP_TOKEN_PATH", os.path.join(BASE_DIR, "RDCAPI", "key.txt"))
-    script = os.path.join(BASE_DIR, "redcap_build", "push_checkin_to_redcap.py")
-
     try:
-        import subprocess
-        import json
-
-        subprocess.run(
-            [_python_executable(), script, "--api-url", api_url, "--token-path", token_path, "--execute"],
-            input=json.dumps(payload),
-            text=True,
-            capture_output=True,
-            check=False,
+        if REDCAP_BUILD_DIR not in sys.path:
+            sys.path.insert(0, REDCAP_BUILD_DIR)
+        from redcap_api_client import read_token, export_records, import_records, RedcapApiError
+        from push_checkin_to_redcap import (
+            find_record_id,
+            get_repeat_instance_max,
+            build_import_rows,
+            rows_to_csv,
         )
+
+        token = read_token(token_path)
+        guid = payload.get("guid", "")
+        if not guid:
+            return False
+
+        record_id = find_record_id(api_url, token, guid) or guid
+        repeat_max = get_repeat_instance_max(api_url, token, guid)
+        rows = build_import_rows(payload, record_id, repeat_max)
+        csv_text = rows_to_csv(rows)
+
+        import_records(api_url, token, csv_text)
+
+        if not _verify_redcap_insert(api_url, token, guid, payload):
+            return False
+
+        _scrub_local_pii(guid, guid_db, participants_db)
+        return True
     except Exception:
-        pass
+        return False
+
+
+def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) -> bool:
+    try:
+        if REDCAP_BUILD_DIR not in sys.path:
+            sys.path.insert(0, REDCAP_BUILD_DIR)
+        from redcap_api_client import export_records
+    except Exception:
+        return False
+
+    filter_logic = f"[guid] = '{guid}'"
+    raw = export_records(api_url, token, filter_logic=filter_logic, export_repeating=True)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return False
+    if not data:
+        return False
+
+    base = None
+    for row in data:
+        if not row.get("redcap_repeat_instrument"):
+            base = row
+            break
+    if not base:
+        return False
+    if base.get("guid", "") != guid:
+        return False
+
+    expected = payload.get("participant", {})
+    for field in ("first_name", "last_name", "dob", "primary_email", "primary_phone"):
+        expected_val = expected.get(field, "")
+        if expected_val and base.get(field, "") != expected_val:
+            return False
+
+    visit = payload.get("visit", {})
+    visit_dt = visit.get("visit_datetime", "")
+    visit_code = visit.get("tubric_study_code", "")
+    if visit_dt:
+        for row in data:
+            if row.get("redcap_repeat_instrument") != "visits":
+                continue
+            if row.get("visit_datetime") == visit_dt and row.get("tubric_study_code") == visit_code:
+                return True
+        return False
+
+    return True
+
+
+def _scrub_local_pii(guid: str, guid_db=None, participants_db=None) -> None:
+    if guid_db is None or participants_db is None:
+        try:
+            guid_db = load_guid_db()
+            participants_db = load_participants_db()
+        except Exception:
+            return
+
+    for person in guid_db.get("people", []):
+        if person.get("guid") != guid:
+            continue
+        person["first_name"] = ""
+        person["last_name"] = ""
+        person["dob"] = ""
+        person["primary_email"] = ""
+        person["primary_phone"] = ""
+        person["secondary_emails"] = []
+        person["secondary_phones"] = []
+        person["newsletter_emails"] = []
+        person["newsletter_phones"] = []
+        person["contact_updates"] = []
+
+    for participant in participants_db.get("participants", []):
+        if participant.get("guid") != guid:
+            continue
+        participant["first_name"] = ""
+        participant["last_name"] = ""
+        participant["dob"] = ""
+        participant["email"] = ""
+        participant["phone"] = ""
+        participant["secondary_emails"] = []
+        participant["secondary_phones"] = []
+        participant["newsletter_emails"] = []
+        participant["newsletter_phones"] = []
+        participant["contact_updates"] = []
+
+    export_guid_csv(guid_db)
+    export_participants_csv(participants_db)
+    export_deidentified_visits(participants_db)
 
 
 def submit_checkin(state, guid_db=None, participants_db=None):
@@ -800,7 +908,7 @@ def submit_checkin(state, guid_db=None, participants_db=None):
 
     person_ref = existing if existing else person
     payload = _build_redcap_payload(guid, person_ref, participant, visit, visit_datetime)
-    auto_push_redcap(payload)
+    auto_push_redcap(payload, guid_db, participants_db)
 
     return guid, action, guid_db, participants_db
 
