@@ -55,6 +55,8 @@ DEID_EXPORT_FILE = os.path.join(DEID_EXPORT_DIR, "deidentified_visits.csv")
 
 REDCAP_BUILD_DIR = os.path.join(BASE_DIR, "redcap_build")
 REDCAP_DEFAULT_TOKEN_PATH = os.path.join(BASE_DIR, "RDCAPI", "key.txt")
+REDCAP_DEFAULT_API_URL = "https://cphapps.temple.edu/redcap/api/"
+REDCAP_API_URL_PATH = os.path.join(BASE_DIR, "RDCAPI", "api_url.txt")
 
 ## CODE COMPLETE!
 
@@ -610,13 +612,11 @@ def auto_push_redcap(payload, guid_db=None, participants_db=None):
     Push a single check-in to REDCap if autopush is enabled.
     If push + verification succeed, scrub local PII and keep GUID + visits.
     """
-    api_url = os.environ.get("TUBRIC_REDCAP_API_URL", "").strip()
+    api_url = _read_redcap_api_url()
     if not api_url:
         return False
-    if os.environ.get("TUBRIC_REDCAP_AUTOPUSH", "").lower() not in ("1", "true", "yes"):
-        return False
 
-    token_path = os.environ.get("TUBRIC_REDCAP_TOKEN_PATH", os.path.join(BASE_DIR, "RDCAPI", "key.txt"))
+    token_path = REDCAP_DEFAULT_TOKEN_PATH
     try:
         if REDCAP_BUILD_DIR not in sys.path:
             sys.path.insert(0, REDCAP_BUILD_DIR)
@@ -647,6 +647,18 @@ def auto_push_redcap(payload, guid_db=None, participants_db=None):
         return True
     except Exception:
         return False
+
+
+def _read_redcap_api_url() -> str:
+    if os.path.exists(REDCAP_API_URL_PATH):
+        try:
+            with open(REDCAP_API_URL_PATH, "r", encoding="utf-8") as f:
+                value = f.read().strip()
+            if value:
+                return value
+        except Exception:
+            pass
+    return REDCAP_DEFAULT_API_URL
 
 
 def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) -> bool:
