@@ -89,6 +89,25 @@ def export_records(
     return _post_form(api_url, payload)
 
 
+def export_report(
+    api_url: str,
+    token: str,
+    report_id: str,
+    *,
+    format: str = "json",
+    export_repeating: bool = True,
+) -> str:
+    payload: dict[str, str] = {
+        "token": token,
+        "content": "report",
+        "format": format,
+        "report_id": str(report_id),
+        "returnFormat": "json",
+        "exportRepeatingInstruments": "true" if export_repeating else "false",
+    }
+    return _post_form(api_url, payload)
+
+
 def summarize_response(raw: str) -> str:
     raw = raw.strip()
     if not raw:

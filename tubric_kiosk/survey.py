@@ -57,6 +57,8 @@ REDCAP_BUILD_DIR = os.path.join(BASE_DIR, "redcap_build")
 REDCAP_DEFAULT_TOKEN_PATH = os.path.join(BASE_DIR, "RDCAPI", "key.txt")
 REDCAP_DEFAULT_API_URL = "https://cphapps.temple.edu/redcap/api/"
 REDCAP_API_URL_PATH = os.path.join(BASE_DIR, "RDCAPI", "api_url.txt")
+REDCAP_DEFAULT_REPORT_ID = "10034"
+REDCAP_REPORT_ID_PATH = os.path.join(BASE_DIR, "RDCAPI", "report_id.txt")
 
 ## CODE COMPLETE!
 
@@ -714,13 +716,34 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
     try:
         if REDCAP_BUILD_DIR not in sys.path:
             sys.path.insert(0, REDCAP_BUILD_DIR)
-        from redcap_api_client import export_records
+        from redcap_api_client import export_records, export_report
     except Exception:
         return False
 
-    # Prefer record ID lookup to avoid export-permission issues on guid field.
-    filter_logic = f"[sub_id] = '{guid}'"
-    raw = export_records(api_url, token, filter_logic=filter_logic, export_repeating=True)
+    report_id = _read_redcap_report_id()
+    raw = ""
+    report_columns = set()
+    if report_id:
+        try:
+            raw = export_report(api_url, token, report_id, export_repeating=True)
+            try:
+                sample = json.loads(raw)
+                if isinstance(sample, list) and sample:
+                    report_columns = set(sample[0].keys())
+            except Exception:
+                report_columns = set()
+        except Exception:
+            raw = ""
+
+        # Require the report to expose GUID + visit fields for verification.
+        required_any = {"visit_number", "visit_datetime", "tubric_study_code"}
+        if not report_columns or "guid" not in report_columns or report_columns.isdisjoint(required_any):
+            return False
+
+    if not raw:
+        # No report configured; fallback to sub_id export verification.
+        filter_logic = f"[sub_id] = '{guid}'"
+        raw = export_records(api_url, token, filter_logic=filter_logic, export_repeating=True)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
@@ -728,6 +751,34 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
     if not data:
         return False
 
+    # Verification by GUID + visit details from report export.
+    visit = payload.get("visit", {})
+    visit_number = str(visit.get("visit_number", "")).strip()
+    visit_dt = visit.get("visit_datetime", "")
+    visit_code = visit.get("tubric_study_code", "")
+
+    # If report export includes guid/visit fields, verify directly.
+    for row in data:
+        row_guid = row.get("guid", "")
+        if row_guid and row_guid != guid:
+            continue
+        row_visit_number = str(row.get("visit_number", "")).strip()
+        row_visit_dt = row.get("visit_datetime", "")
+        row_visit_code = row.get("tubric_study_code", "")
+
+        guid_ok = (row_guid == guid) if row_guid else True
+        visit_ok = False
+        if visit_number and row_visit_number and row_visit_number == visit_number:
+            visit_ok = True
+        if visit_dt and row_visit_dt and row_visit_dt == visit_dt:
+            visit_ok = True
+        if visit_code and row_visit_code and row_visit_code == visit_code:
+            visit_ok = True if visit_ok or (row_visit_number or row_visit_dt) else True
+
+        if guid_ok and visit_ok:
+            return True
+
+    # Fallback to limited export checks.
     base = None
     for row in data:
         if not row.get("redcap_repeat_instrument"):
@@ -735,7 +786,6 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
             break
     if not base:
         return False
-    # If guid is available in export, confirm it matches; otherwise skip.
     if base.get("guid") and base.get("guid") != guid:
         return False
 
@@ -748,9 +798,6 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
         if expected_val and base.get(field, "") != expected_val:
             return False
 
-    visit = payload.get("visit", {})
-    visit_dt = visit.get("visit_datetime", "")
-    visit_code = visit.get("tubric_study_code", "")
     if visit_dt:
         any_visit_field = any("visit_datetime" in row or "tubric_study_code" in row for row in data)
         if any_visit_field:
@@ -762,6 +809,18 @@ def _verify_redcap_insert(api_url: str, token: str, guid: str, payload: dict) ->
             return False
 
     return True
+
+
+def _read_redcap_report_id() -> str:
+    if os.path.exists(REDCAP_REPORT_ID_PATH):
+        try:
+            with open(REDCAP_REPORT_ID_PATH, "r", encoding="utf-8") as f:
+                value = f.read().strip()
+            if value:
+                return value
+        except Exception:
+            pass
+    return REDCAP_DEFAULT_REPORT_ID
 
 
 def _scrub_local_pii(guid: str, guid_db=None, participants_db=None) -> None:
