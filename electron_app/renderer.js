@@ -61,14 +61,30 @@ function normalizePhoneDigits(phone) {
   return phone.replace(/\D/g, "");
 }
 
+function contactAllowed() {
+  return state.consent_contact === "Yes";
+}
+
 function setInfoSubtitle() {
   const sub = document.getElementById("info-subtitle");
+  const allowed = contactAllowed();
   if (state.is_guardian === "guardian") {
     sub.textContent =
-      "You indicated you are a parent/guardian. Enter the PARTICIPANT'S full legal name and date of birth exactly as on previous visits. If the participant does not have an email or phone, you may enter your own.";
+      "You indicated you are a parent/guardian. Enter the PARTICIPANT'S full legal name and date of birth exactly as on previous visits." +
+      (allowed ? " If the participant does not have an email or phone, you may enter your own." : "");
   } else {
     sub.textContent =
       "Please enter your full legal name and date of birth exactly as you did on previous visits.";
+  }
+
+  // No contact consent means no contact information is collected at all.
+  const show = allowed ? "remove" : "add";
+  document.getElementById("email-field").classList[show]("hidden");
+  document.getElementById("phone-field").classList[show]("hidden");
+  document.getElementById("contact-note").classList[show]("hidden");
+  if (!allowed) {
+    document.getElementById("email").value = "";
+    document.getElementById("phone").value = "";
   }
 }
 
@@ -160,24 +176,26 @@ document.getElementById("info-continue").addEventListener("click", () => {
     error.textContent = "Please enter date of birth as MM-DD-YYYY.";
     return;
   }
-  if (!email || !isValidEmail(email)) {
-    error.textContent = "Please enter a valid email address.";
-    return;
-  }
-  if (!phone) {
-    error.textContent = "Please enter a phone number.";
-    return;
-  }
-  if (normalizePhoneDigits(phone).length !== 10) {
-    error.textContent = "Please enter a valid 10-digit phone number.";
-    return;
+  if (contactAllowed()) {
+    if (!email || !isValidEmail(email)) {
+      error.textContent = "Please enter a valid email address.";
+      return;
+    }
+    if (!phone) {
+      error.textContent = "Please enter a phone number.";
+      return;
+    }
+    if (normalizePhoneDigits(phone).length !== 10) {
+      error.textContent = "Please enter a valid 10-digit phone number.";
+      return;
+    }
   }
 
   state.first_name = first;
   state.last_name = last;
   state.dob = normalizeDob(dob);
-  state.email = email;
-  state.phone = phone;
+  state.email = contactAllowed() ? email : "";
+  state.phone = contactAllowed() ? phone : "";
 
   if (state.is_guardian === "guardian" && state.consent_contact === "Yes" && !guardianNoticeShown) {
     guardianNoticeShown = true;

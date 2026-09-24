@@ -1054,6 +1054,11 @@ def submit_checkin(state, guid_db=None, participants_db=None):
     newsletter_phone = s.get("newsletter_phone", "")
     newsletter_pref = s.get("newsletter_pref", "")
 
+    # No contact consent means no contact information is stored, regardless
+    # of what a front end sent. Matching then rests on name + DOB.
+    if _yesno_to_redcap(s.get("consent_contact", "")) != "1":
+        email = phone = newsletter_email = newsletter_phone = newsletter_pref = ""
+
     existing = find_person(
         guid_db["people"],
         dob=dob,
@@ -1560,7 +1565,7 @@ class ConsentFrame(BaseFrame):
         
         tk.Label(
             card,
-            text='We will save your information regardless of your choice.',
+            text='If you choose no, we will not collect any contact information.\nWe will only record your name, date of birth, and visit.',
             bg=COLORS['card'],
             fg=COLORS['text_light'],
             font=FONT_BODY,
@@ -1747,7 +1752,7 @@ class ParticipantInfoFrame(BaseFrame):
 
             ent = StyledEntry(field_container, width=45)
             ent.pack(fill="x", ipady=8)
-            
+            ent.container = field_container
             return ent
 
         self.first = field(0, "Legal First Name", "as on previous visits")
@@ -1807,6 +1812,7 @@ class ParticipantInfoFrame(BaseFrame):
         # Note
         note_frame = tk.Frame(card, bg=COLORS['accent_light'], padx=15, pady=12)
         note_frame.pack(pady=(20, 20), fill="x")
+        self.note_frame = note_frame
         
         tk.Label(
             note_frame,
@@ -1820,6 +1826,7 @@ class ParticipantInfoFrame(BaseFrame):
         # Buttons
         button_frame = tk.Frame(card, bg=COLORS['card'])
         button_frame.pack(pady=(10, 0))
+        self.button_frame = button_frame
 
         StyledButton(button_frame, "Continue", self._continue).pack(pady=5)
 
@@ -1847,7 +1854,20 @@ class ParticipantInfoFrame(BaseFrame):
 
         for ent in (self.first, self.last, self.dob, self.email, self.phone):
             ent.delete(0, tk.END)
+
+        # No contact consent means no contact information is collected at all.
+        if self._contact_allowed():
+            self.email.container.grid()
+            self.phone.container.grid()
+            self.note_frame.pack(pady=(20, 20), fill="x", before=self.button_frame)
+        else:
+            self.email.container.grid_remove()
+            self.phone.container.grid_remove()
+            self.note_frame.pack_forget()
         self.first.focus_set()
+
+    def _contact_allowed(self):
+        return self.controller.state.get("consent_contact") == "Yes"
 
     def _continue(self):
         first = self.first.get().strip()
@@ -1868,20 +1888,24 @@ class ParticipantInfoFrame(BaseFrame):
             )
             return
 
-        if not email:
-            messagebox.showinfo("Email Required", "Please enter an email address.")
-            return
-            
-        if not phone:
-            messagebox.showinfo("Phone Required", "Please enter a phone number.")
-            return
+        if self._contact_allowed():
+            if not email:
+                messagebox.showinfo("Email Required", "Please enter an email address.")
+                return
 
-        if not normalize_phone(phone):
-            messagebox.showinfo(
-                "Invalid Phone Number",
-                "Please enter a valid 10-digit phone number\n(e.g., 215-555-1234)",
-            )
-            return
+            if not phone:
+                messagebox.showinfo("Phone Required", "Please enter a phone number.")
+                return
+
+            if not normalize_phone(phone):
+                messagebox.showinfo(
+                    "Invalid Phone Number",
+                    "Please enter a valid 10-digit phone number\n(e.g., 215-555-1234)",
+                )
+                return
+        else:
+            email = ""
+            phone = ""
 
         self.controller.state.update(
             {

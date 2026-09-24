@@ -203,6 +203,26 @@ class SubmitFlowTests(unittest.TestCase):
         visits = survey.read_csv(survey.PARTICIPANT_VISITS_CSV)
         self.assertEqual(len(visits), 2)
 
+    def test_no_consent_stores_no_contact(self):
+        g1, a1 = checkin(consent_contact="No", newsletter_email="mom@example.com", newsletter_pref="both")
+        self.assertEqual(a1, "created_new")
+        people = survey.load_guid_db()["people"]
+        self.assertEqual(people[0]["primary_email"], "")
+        self.assertEqual(people[0]["primary_phone"], "")
+        self.assertEqual(people[0]["newsletter_emails"], [])
+        self.assertEqual(people[0]["email_hashes"], [])
+        self.assertEqual(people[0]["phone_hashes"], [])
+        parts = survey.load_participants_db()["participants"]
+        self.assertEqual((parts[0]["email"], parts[0]["phone"], parts[0]["newsletter_pref"]), ("", "", ""))
+        self.assertEqual(parts[0]["consent_contact"], "No")
+        # Still recognized on return by name + DOB alone.
+        g2, a2 = checkin(consent_contact="No", tubric_study_code="B")
+        self.assertEqual((g1, "matched_existing"), (g2, a2))
+        # And if they later say yes, contact is added to the same person.
+        g3, a3 = checkin(consent_contact="Yes")
+        self.assertEqual((g1, "matched_existing"), (g3, a3))
+        self.assertEqual(survey.load_guid_db()["people"][0]["primary_email"], "maria@example.com")
+
     def test_autopush_disabled_without_env(self):
         self.assertFalse(survey.auto_push_redcap({"guid": "x"}))
 
