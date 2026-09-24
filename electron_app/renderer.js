@@ -240,7 +240,6 @@ function prepareConsentScreen() {
     state.is_guardian === "guardian" ? "Parent/guardian printed name" : "Printed name";
   consentName.value = `${state.first_name} ${state.last_name}`.trim();
   signature.clear();
-  document.getElementById("consent-doc").scrollTop = 0;
 }
 
 // Simple signature pad on a canvas. Tracks whether any ink was laid down.

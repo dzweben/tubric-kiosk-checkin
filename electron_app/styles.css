@@ -136,56 +136,23 @@ body {
 
 .consent-doc {
   flex: 0 0 auto;
-  height: clamp(160px, 30vh, 480px);
-  overflow-y: auto;
-  padding: 22px 26px;
+  height: clamp(240px, 44vh, 680px);
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: #fbfbfd;
-  font-size: 17px;
-  line-height: 1.5;
-  color: var(--text);
+  overflow: hidden;
+  background: #e5e7eb;
 }
 
-.consent-doc h2 {
-  font-size: 24px;
-  margin: 0 0 12px 0;
+#consent-pdf {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
-.consent-doc h3 {
-  font-size: 20px;
-  margin: 22px 0 8px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.consent-doc h4 {
-  font-size: 18px;
-  margin: 18px 0 6px 0;
-}
-
-.consent-doc p {
-  margin: 0 0 10px 0;
-}
-
-.consent-doc ul {
-  margin: 0 0 10px 0;
-  padding-left: 24px;
-}
-
-.consent-meta {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
-  margin: 0 0 8px 0;
-}
-
-.consent-meta dt {
-  font-weight: 650;
-}
-
-.consent-meta dd {
-  margin: 0;
+.muted.small {
+  font-size: var(--helper);
+  margin: 6px 0 0 0;
 }
 
 .consent-sign {

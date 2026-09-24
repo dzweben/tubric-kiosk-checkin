@@ -38,6 +38,8 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      // Chromium's built-in PDF viewer, used to show the IRB consent form.
+      plugins: true,
     },
   });
 

@@ -16,9 +16,13 @@ This document describes the backend storage and matching logic in `survey.py`, u
    `consent_signed_at`, confirmed against REDCap `consent_date` /
    `consent_name` / `consent_signature` when the API is reachable) they go
    straight to the study code.
-3. **Consent** (only when not matched or not yet consented): the IRB
-   protocol 31285 consent form is shown in full; the participant prints their
-   name, the date is filled automatically, and they draw a signature. Joining
+3. **Consent** (only when not matched or not yet consented): the IRB-approved
+   protocol 31285 consent form is shown as the actual PDF
+   (`electron_app/consent/31285_consent_03252024.pdf`, converted from the
+   IRB docx kept in `docs/consent/`; never retyped). The participant prints
+   their name, the date is filled automatically, and they draw a signature.
+   To update the form, replace the docx and re-run
+   `soffice --headless --convert-to pdf --outdir electron_app/consent <docx>`. Joining
    the pool and agreeing to be contacted are one consent. Declining ends the
    session and nothing is saved.
 4. **Study code** entered by the RA, then `submit_checkin`.
