@@ -3,7 +3,14 @@
 This document describes the backend storage and matching logic in `survey.py`, used by the Electron kiosk through `kiosk_backend_cli.py`.
 
 ## Check-in flow (Electron kiosk)
-1. **Sign in**: legal name, DOB, email, phone, and who is filling it in.
+1. **Sign in**: who is filling it in, then legal name, DOB, email, phone.
+   - *Participant*: must be 18+. A DOB under 18 shows the "parent or
+     guardian needed" screen: hand the screen to the parent (switches to
+     guardian mode with cleared fields) or stop here (nothing saved).
+   - *Parent/guardian*: enters **their own** information, not the child's
+     (banner + "Your ..." labels). Their DOB must be 18+, which catches a
+     parent who types the child's DOB by mistake. The pool record is the
+     parent; the study code records the visit.
 2. **Lookup** (`lookup_person`, CLI `{"action": "lookup"}`): hashed-index match.
    If the person exists and has already signed consent (local
    `consent_signed_at`, confirmed against REDCap `consent_date` /
@@ -19,10 +26,15 @@ This document describes the backend storage and matching logic in `survey.py`, u
 Consent is stored as `consent_name`, `consent_date`, `consent_signed_at` on
 the participant row and the signature PNG at
 `ID-data/signatures/<guid>.png`. On REDCap push the name and date go on the
-participant instrument (`consent_name`, `consent_date`) and the PNG is
-uploaded to the `consent_signature` file field. After verification the local
-name and PNG are scrubbed; `consent_date` and `consent_signed_at` are kept so
-the person is not asked to consent again.
+`consent_form` instrument (`consent_name`, `consent_date`,
+`consent_form_complete`=2) and the PNG is uploaded to the `consent_signature`
+**plain file** field. REDCap refuses API imports into "signature"-type
+fields, so that field must stay a plain file upload. If the upload fails the
+PNG is kept and retried on the person's next check-in. After verification the
+local name (and the PNG, once uploaded) are scrubbed; `consent_date` and
+`consent_signed_at` are kept so the person is not asked to consent again.
+
+Every push result and failure is appended to `ID-data/kiosk.log`.
 
 Launch the kiosk with `Run_TUBRIC_Electron.command`.
 

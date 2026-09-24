@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Temple Participant Pool</title>
-    <link rel="stylesheet" href="./styles.css?v=4" />
+    <link rel="stylesheet" href="./styles.css?v=5" />
   </head>
   <body>
     <main class="kiosk">
@@ -35,45 +35,75 @@
         </header>
         <h1>Sign In</h1>
         <p class="muted" id="info-subtitle">
-          Enter the participant's full legal name and date of birth exactly as on previous visits.
+          Enter your full legal name and date of birth exactly as on previous visits.
         </p>
 
         <div class="role-toggle" role="group" aria-label="Who is completing this form">
-          <button class="toggle active" data-role="participant" type="button">I am the participant</button>
+          <button class="toggle active" data-role="participant" type="button">I am the participant (18+)</button>
           <button class="toggle" data-role="guardian" type="button">I am a parent/guardian</button>
+        </div>
+
+        <div class="banner hidden" id="guardian-banner">
+          <strong>Parent/guardian: enter YOUR OWN information below.</strong>
+          Your name, your date of birth, your email and your phone. Not the child's.
         </div>
 
         <form class="form" id="info-form" autocomplete="off">
           <label>
-            Legal First Name <span class="hint">(as on previous visits)</span>
+            <span class="lbl" data-participant="Legal First Name" data-guardian="Your Legal First Name">Legal First Name</span>
+            <span class="hint">(as on previous visits)</span>
             <input type="text" id="firstName" autocomplete="off" />
           </label>
           <label>
-            Legal Last Name <span class="hint">(as on previous visits)</span>
+            <span class="lbl" data-participant="Legal Last Name" data-guardian="Your Legal Last Name">Legal Last Name</span>
+            <span class="hint">(as on previous visits)</span>
             <input type="text" id="lastName" autocomplete="off" />
           </label>
           <label>
-            Date of Birth <span class="hint">(MM-DD-YYYY)</span>
+            <span class="lbl" data-participant="Date of Birth" data-guardian="Your Date of Birth (the parent's, not the child's)">Date of Birth</span>
+            <span class="hint">(MM-DD-YYYY)</span>
             <input type="text" id="dob" inputmode="numeric" autocomplete="off" />
           </label>
           <label id="email-field">
-            Email Address
+            <span class="lbl" data-participant="Email Address" data-guardian="Your Email Address">Email Address</span>
             <input type="email" id="email" autocomplete="off" />
           </label>
           <label id="phone-field">
-            Phone Number <span class="hint">(555-555-5555)</span>
+            <span class="lbl" data-participant="Phone Number" data-guardian="Your Phone Number">Phone Number</span>
+            <span class="hint">(555-555-5555)</span>
             <input type="tel" id="phone" inputmode="numeric" autocomplete="off" />
           </label>
         </form>
 
-        <div class="note" id="contact-note">
-          Please provide both email and phone number. Parents/guardians may enter their own if the participant has none.
-        </div>
+        <div class="note" id="contact-note">Please provide both email and phone number.</div>
         <div class="error" id="info-error"></div>
 
         <div class="actions">
           <button class="btn primary" id="info-continue">Continue</button>
           <button class="btn ghost" data-back>← Back</button>
+        </div>
+      </section>
+
+      <section class="card screen-center hidden" id="screen-under18">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">Parent or Guardian Needed</div>
+          </div>
+        </header>
+        <h1>Participants under 18 need a parent or guardian.</h1>
+        <p class="lead">
+          Based on the date of birth you entered, a parent or guardian has to complete this sign-in
+          with their own information.
+        </p>
+        <p class="muted">
+          If your parent or guardian is with you, hand them the screen. If not, you can stop here.
+          Nothing has been saved.
+        </p>
+        <div class="actions split">
+          <button class="btn primary" id="under18-guardian">My parent/guardian is here</button>
+          <button class="btn secondary" id="under18-stop">Stop here</button>
         </div>
       </section>
 
@@ -281,42 +311,6 @@
         </div>
       </section>
     </main>
-
-    <div class="modal hidden" id="guardian-contact-modal" role="dialog" aria-modal="true">
-      <div class="modal-card">
-        <button class="modal-close" id="guardian-contact-close" aria-label="Close">×</button>
-        <h2>Parent/guardian contact</h2>
-        <p class="muted">
-          The form asked for the participant’s information. If you want the newsletter to go to
-          you instead, enter your email and phone number below. If the participant’s contact is
-          already the one you want, you can close this.
-        </p>
-        <div class="modal-form">
-          <label>
-            Your Email (optional)
-            <input type="email" id="guardianEmail" autocomplete="off" />
-          </label>
-          <label>
-            Your Phone (optional)
-            <input type="tel" id="guardianPhone" inputmode="numeric" autocomplete="off" />
-          </label>
-        </div>
-        <div class="modal-options hidden" id="guardian-options">
-          <label class="check">
-            <input type="radio" name="newsletter_pref" value="guardian_only" />
-            Please send the newsletter only to the email/phone above.
-          </label>
-          <label class="check">
-            <input type="radio" name="newsletter_pref" value="both" />
-            Please send the newsletter to both the email/phone above and the participant email/phone entered earlier.
-          </label>
-        </div>
-        <div class="error" id="guardian-error"></div>
-        <div class="actions">
-          <button class="btn primary" id="guardian-contact-ok">Continue</button>
-        </div>
-      </div>
-    </div>
 
     <script src="./renderer.js"></script>
   </body>

@@ -16,7 +16,6 @@ const state = {
   consent_signature: "",
 };
 let lookup = { matched: false, guid: "", consented: false };
-let guardianNoticeShown = false;
 
 function showScreen(id) {
   screens.forEach((s) => s.classList.add("hidden"));
@@ -75,15 +74,27 @@ function todayParts() {
   return { display: `${mm}-${dd}-${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
 }
 
+function ageOn(isoDob, on = new Date()) {
+  const [y, m, d] = isoDob.split("-").map((v) => parseInt(v, 10));
+  let age = on.getFullYear() - y;
+  if (on.getMonth() + 1 < m || (on.getMonth() + 1 === m && on.getDate() < d)) age -= 1;
+  return age;
+}
+
 // ---------- sign-in screen ----------
 function setInfoSubtitle() {
   const sub = document.getElementById("info-subtitle");
-  if (state.is_guardian === "guardian") {
+  const guardian = state.is_guardian === "guardian";
+  document.getElementById("guardian-banner").classList.toggle("hidden", !guardian);
+  document.querySelectorAll("#info-form .lbl").forEach((el) => {
+    el.textContent = guardian ? el.dataset.guardian : el.dataset.participant;
+  });
+  if (guardian) {
     sub.textContent =
-      "You indicated you are a parent/guardian. Enter the PARTICIPANT'S full legal name and date of birth exactly as on previous visits.";
+      "You are signing in as the parent/guardian. Enter your own information exactly as on previous visits.";
   } else {
     sub.textContent =
-      "Please enter your full legal name and date of birth exactly as you did on previous visits.";
+      "Please enter your full legal name and date of birth exactly as you did on previous visits. Participants must be 18 or older to sign in themselves.";
   }
 }
 
@@ -154,6 +165,18 @@ infoContinue.addEventListener("click", async () => {
     return;
   }
 
+  const age = ageOn(normalizeDob(dob));
+  if (state.is_guardian === "guardian" && age < 18) {
+    error.textContent =
+      "A parent/guardian must be 18 or older. Enter YOUR OWN date of birth, not the child's.";
+    return;
+  }
+  if (state.is_guardian !== "guardian" && age < 18) {
+    // Under-18 participants cannot sign in themselves. Nothing is saved.
+    showScreen("screen-under18");
+    return;
+  }
+
   state.first_name = first;
   state.last_name = last;
   state.dob = normalizeDob(dob);
@@ -184,6 +207,24 @@ infoContinue.addEventListener("click", async () => {
   showScreen("screen-consent");
 });
 
+document.getElementById("under18-guardian").addEventListener("click", () => {
+  // Switch to guardian mode and clear the child's details so the parent
+  // enters their own.
+  document.querySelectorAll(".role-toggle [data-role]").forEach((b) => {
+    b.classList.toggle("active", b.dataset.role === "guardian");
+  });
+  state.is_guardian = "guardian";
+  ["firstName", "lastName", "dob", "email", "phone"].forEach((id) => (document.getElementById(id).value = ""));
+  document.getElementById("info-error").textContent = "";
+  setInfoSubtitle();
+  showScreen("screen-signin");
+  document.getElementById("firstName").focus();
+});
+
+document.getElementById("under18-stop").addEventListener("click", () => {
+  showScreen("screen-no-checkin");
+});
+
 // ---------- consent screen ----------
 const consentName = document.getElementById("consentName");
 const consentDate = document.getElementById("consentDate");
@@ -195,13 +236,9 @@ function prepareConsentScreen() {
   const today = todayParts();
   consentDate.value = today.display;
   state.consent_date = today.iso;
-  if (state.is_guardian === "guardian") {
-    consentNameLabel.textContent = "Parent/guardian printed name";
-    consentName.value = "";
-  } else {
-    consentNameLabel.textContent = "Printed name";
-    consentName.value = `${state.first_name} ${state.last_name}`.trim();
-  }
+  consentNameLabel.textContent =
+    state.is_guardian === "guardian" ? "Parent/guardian printed name" : "Printed name";
+  consentName.value = `${state.first_name} ${state.last_name}`.trim();
   signature.clear();
   document.getElementById("consent-doc").scrollTop = 0;
 }
@@ -307,12 +344,6 @@ document.getElementById("consent-accept").addEventListener("click", () => {
   state.consent_name = name;
   state.consent_signature = signature.toDataURL();
   state.consent_contact = "Yes";
-
-  if (state.is_guardian === "guardian" && !guardianNoticeShown) {
-    guardianNoticeShown = true;
-    guardianModal.classList.remove("hidden");
-    return;
-  }
   showScreen("screen-study");
 });
 
@@ -320,66 +351,6 @@ document.getElementById("consent-decline").addEventListener("click", () => {
   // Nothing is saved: the backend is never called on this path.
   showScreen("screen-no-checkin");
 });
-
-// ---------- guardian newsletter modal ----------
-const guardianModal = document.getElementById("guardian-contact-modal");
-const guardianModalOk = document.getElementById("guardian-contact-ok");
-const guardianModalClose = document.getElementById("guardian-contact-close");
-const guardianEmailInput = document.getElementById("guardianEmail");
-const guardianPhoneInput = document.getElementById("guardianPhone");
-const guardianError = document.getElementById("guardian-error");
-const guardianOptions = document.getElementById("guardian-options");
-
-function closeGuardianModal() {
-  guardianError.textContent = "";
-  guardianEmailInput.value = "";
-  guardianPhoneInput.value = "";
-  guardianOptions.classList.add("hidden");
-  document.querySelectorAll('input[name="newsletter_pref"]').forEach((el) => (el.checked = false));
-  guardianModal.classList.add("hidden");
-  showScreen("screen-study");
-}
-
-function updateGuardianOptionsVisibility() {
-  const hasAny = guardianEmailInput.value.trim() || guardianPhoneInput.value.trim();
-  if (hasAny) {
-    guardianOptions.classList.remove("hidden");
-  } else {
-    guardianOptions.classList.add("hidden");
-    document.querySelectorAll('input[name="newsletter_pref"]').forEach((el) => (el.checked = false));
-  }
-}
-
-guardianEmailInput.addEventListener("input", updateGuardianOptionsVisibility);
-guardianPhoneInput.addEventListener("input", updateGuardianOptionsVisibility);
-
-guardianModalOk.addEventListener("click", () => {
-  const gEmail = guardianEmailInput.value.trim();
-  const gPhone = guardianPhoneInput.value.trim();
-
-  if (gEmail && !isValidEmail(gEmail)) {
-    guardianError.textContent = "Please enter a valid email address.";
-    return;
-  }
-  if (gPhone && normalizePhoneDigits(gPhone).length !== 10) {
-    guardianError.textContent = "Please enter a valid 10-digit phone number.";
-    return;
-  }
-
-  if (gEmail || gPhone) {
-    const selected = document.querySelector('input[name="newsletter_pref"]:checked');
-    if (!selected) {
-      guardianError.textContent = "Please choose how the newsletter should be sent.";
-      return;
-    }
-    state.newsletter_email = gEmail;
-    state.newsletter_phone = gPhone;
-    state.newsletter_pref = selected.value;
-  }
-
-  closeGuardianModal();
-});
-guardianModalClose.addEventListener("click", closeGuardianModal);
 
 // ---------- study code / finish ----------
 const finishBtn = document.getElementById("finish");

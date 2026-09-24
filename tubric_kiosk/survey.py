@@ -29,6 +29,17 @@ IDENTITY_SALT_PATH = os.path.join(PRIVATE_DIR, "identity_salt.txt")
 
 # Drawn consent signatures wait here (PNG per GUID) until pushed to REDCap.
 SIGNATURE_DIR = os.path.join(PRIVATE_DIR, "signatures")
+KIOSK_LOG_PATH = os.path.join(PRIVATE_DIR, "kiosk.log")
+
+
+def kiosk_log(message: str) -> None:
+    """Append one timestamped line to the private kiosk log. Never raises."""
+    try:
+        os.makedirs(os.path.dirname(KIOSK_LOG_PATH), exist_ok=True)
+        with open(KIOSK_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now().isoformat(timespec='seconds')} {message}\n")
+    except Exception:
+        pass
 
 # Matching threshold (see find_person for the scoring table).
 MATCH_THRESHOLD = 4
@@ -802,18 +813,31 @@ def auto_push_redcap(payload, guid_db=None, participants_db=None):
         csv_text = rows_to_csv(rows)
 
         import_records(api_url, token, csv_text)
+        kiosk_log(f"redcap import ok guid={guid} visit={payload.get('visit', {}).get('visit_number', '')}")
 
+        # The signature is uploaded separately. If REDCap refuses it, the PNG
+        # stays in ID-data/signatures and is retried on this person's next
+        # check-in, and the rest of the push still verifies and scrubs.
+        sig_uploaded = False
         sig_path = payload.get("signature_path", "")
         if sig_path and os.path.exists(sig_path):
-            from redcap_api_client import import_file
-            import_file(api_url, token, record_id, "consent_signature", sig_path)
+            try:
+                from redcap_api_client import import_file
+                import_file(api_url, token, record_id, "consent_signature", sig_path)
+                sig_uploaded = True
+                kiosk_log(f"signature uploaded guid={guid}")
+            except Exception as exc:
+                kiosk_log(f"signature upload FAILED guid={guid}: {exc}")
 
         if not _verify_redcap_insert(api_url, token, guid, payload):
+            kiosk_log(f"redcap verification FAILED guid={guid}; local PII kept")
             return False
 
-        _scrub_local_pii(guid, guid_db, participants_db)
+        _scrub_local_pii(guid, guid_db, participants_db, keep_signature=not sig_uploaded)
+        kiosk_log(f"local PII scrubbed guid={guid} signature_pending={not sig_uploaded}")
         return True
-    except Exception:
+    except Exception as exc:
+        kiosk_log(f"redcap push FAILED guid={payload.get('guid', '')}: {exc}")
         return False
 
 
@@ -974,7 +998,7 @@ def _read_redcap_report_id() -> str:
     return REDCAP_DEFAULT_REPORT_ID
 
 
-def _scrub_local_pii(guid: str, guid_db=None, participants_db=None) -> None:
+def _scrub_local_pii(guid: str, guid_db=None, participants_db=None, keep_signature: bool = False) -> None:
     """
     Blank plaintext PII for one GUID. The hashed identity index (dob_hash,
     first_hashes, last_hash, email_hashes, phone_hashes) is deliberately kept
@@ -1016,11 +1040,12 @@ def _scrub_local_pii(guid: str, guid_db=None, participants_db=None) -> None:
         participant["contact_updates"] = []
         participant["consent_name"] = ""
 
-    try:
-        if os.path.exists(signature_path(guid)):
-            os.remove(signature_path(guid))
-    except Exception:
-        pass
+    if not keep_signature:
+        try:
+            if os.path.exists(signature_path(guid)):
+                os.remove(signature_path(guid))
+        except Exception:
+            pass
 
     export_guid_csv(guid_db)
     export_participants_csv(participants_db)

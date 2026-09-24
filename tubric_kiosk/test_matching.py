@@ -256,7 +256,13 @@ class SubmitFlowTests(unittest.TestCase):
         self.assertEqual(payload["participant"]["consent_date"], "2026-09-24")
         self.assertEqual(payload["signature_path"], survey.signature_path(g1))
 
-        # Scrub keeps the consent flag but drops the name and the signature file.
+        # Scrub with the signature still pending keeps the PNG for retry...
+        survey._scrub_local_pii(g1, guid_db, pdb, keep_signature=True)
+        self.assertTrue(os.path.exists(survey.signature_path(g1)))
+        payload = survey._build_redcap_payload(g1, guid_db["people"][0], pdb["participants"][0],
+                                               pdb["participants"][0]["visits"][0], "")
+        self.assertEqual(payload["signature_path"], survey.signature_path(g1))
+        # ...and once uploaded, the scrub drops the name and the file.
         survey._scrub_local_pii(g1, guid_db, pdb)
         self.assertFalse(os.path.exists(survey.signature_path(g1)))
         parts = survey.load_participants_db()["participants"]

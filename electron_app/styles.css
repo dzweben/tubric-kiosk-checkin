@@ -73,6 +73,23 @@ body {
   gap: 10px;
 }
 
+.banner {
+  background: var(--accentSoft);
+  border: 2px solid var(--accent);
+  color: var(--text);
+  padding: 16px 20px;
+  border-radius: 14px;
+  font-size: var(--body);
+  margin: 0 0 16px 0;
+}
+
+.banner strong {
+  display: block;
+  color: var(--accent);
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
 .role-toggle {
   display: flex;
   gap: 12px;

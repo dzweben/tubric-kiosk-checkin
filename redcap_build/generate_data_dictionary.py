@@ -138,7 +138,7 @@ def build_full_dictionary() -> list[dict]:
     rows.append(_row("consent_participant", form, "Consent to be contacted", "yesno"))
     rows.append(_row("consent_name", form, "Consent: printed name", "text", identifier="y"))
     rows.append(_row("consent_date", form, "Consent: date", "text", validation="date_ymd"))
-    rows.append(_row("consent_signature", form, "Consent: signature", "file", validation="signature"))
+    rows.append(_row("consent_signature", form, "Consent: signature", "file", note="Signature PNG drawn on the kiosk (plain file field; REDCap signature fields cannot be imported via API)."))
     rows.append(_row("created_at", form, "Created at", "text", validation="datetime_ymd"))
     rows.append(_row("last_seen_at", form, "Last seen at", "text", validation="datetime_ymd"))
 

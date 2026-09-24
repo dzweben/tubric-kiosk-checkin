@@ -105,6 +105,7 @@ def build_import_rows(payload: dict, record_id: str, repeat_max: dict) -> list[d
             "consent_participant": participant.get("consent_participant", ""),
             "consent_name": participant.get("consent_name", ""),
             "consent_date": participant.get("consent_date", ""),
+            "consent_form_complete": "2" if participant.get("consent_name") else "",
             "created_at": participant.get("created_at", ""),
             "last_seen_at": participant.get("last_seen_at", ""),
         }
