@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Temple Participant Pool</title>
+    <link rel="stylesheet" href="./styles.css?v=10" />
+  </head>
+  <body>
+    <main class="kiosk">
+      <section class="card screen-center" id="screen-welcome">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">Temple University Brain Research Imaging Center</div>
+          </div>
+        </header>
+
+        <h1>Welcome to the Temple Participant Pool</h1>
+        <p class="lead">Tap below to sign in for your visit today.</p>
+        <p class="muted">Parents/guardians: please enter the participant's information.</p>
+        <div class="actions">
+          <button class="btn primary" data-next="screen-signin">Sign In</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="screen-signin">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">Sign In</div>
+          </div>
+        </header>
+        <h1>Sign In</h1>
+        <p class="muted" id="info-subtitle">
+          Enter your full legal name and date of birth exactly as on previous visits.
+        </p>
+
+        <div class="role-toggle" role="group" aria-label="Who is completing this form">
+          <button class="toggle active" data-role="participant" type="button">I am the participant (18+)</button>
+          <button class="toggle" data-role="guardian" type="button">I am a parent/guardian</button>
+        </div>
+
+        <div class="banner hidden" id="guardian-banner">
+          <strong>Parent/guardian: enter YOUR OWN information below.</strong>
+          Your name, your date of birth, your email and your phone. Not the child's.
+        </div>
+
+        <form class="form" id="info-form" autocomplete="off">
+          <label>
+            <span class="lbl" data-participant="Legal First Name" data-guardian="Your Legal First Name">Legal First Name</span>
+            <span class="hint">(as on previous visits)</span>
+            <input type="text" id="firstName" autocomplete="off" />
+          </label>
+          <label>
+            <span class="lbl" data-participant="Legal Last Name" data-guardian="Your Legal Last Name">Legal Last Name</span>
+            <span class="hint">(as on previous visits)</span>
+            <input type="text" id="lastName" autocomplete="off" />
+          </label>
+          <label>
+            <span class="lbl" data-participant="Date of Birth" data-guardian="Your Date of Birth (the parent's, not the child's)">Date of Birth</span>
+            <span class="hint">(MM-DD-YYYY)</span>
+            <input type="text" id="dob" inputmode="numeric" autocomplete="off" />
+          </label>
+          <label id="email-field">
+            <span class="lbl" data-participant="Email Address" data-guardian="Your Email Address">Email Address</span>
+            <input type="email" id="email" autocomplete="off" />
+          </label>
+          <label id="phone-field">
+            <span class="lbl" data-participant="Phone Number" data-guardian="Your Phone Number">Phone Number</span>
+            <span class="hint">(555-555-5555)</span>
+            <input type="tel" id="phone" inputmode="numeric" autocomplete="off" />
+          </label>
+        </form>
+
+        <div class="note" id="contact-note">Please provide both email and phone number.</div>
+        <div class="error" id="info-error"></div>
+
+        <div class="actions sticky-actions">
+          <button class="btn primary" id="info-continue">Continue</button>
+          <button class="btn ghost" data-back>← Back</button>
+        </div>
+      </section>
+
+      <section class="card screen-center hidden" id="screen-under18">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">Parent or Guardian Needed</div>
+          </div>
+        </header>
+        <h1>Participants under 18 need a parent or guardian.</h1>
+        <p class="lead">
+          Based on the date of birth you entered, a parent or guardian has to complete this sign-in
+          with their own information.
+        </p>
+        <p class="muted">
+          If your parent or guardian is with you, hand them the screen. If not, you can stop here.
+          Nothing has been saved.
+        </p>
+        <div class="actions split">
+          <button class="btn primary" id="under18-guardian">My parent/guardian is here</button>
+          <button class="btn secondary" id="under18-stop">Stop here</button>
+        </div>
+      </section>
+
+      <section class="card consent hidden" id="screen-consent">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">Research Subject Consent Form</div>
+          </div>
+        </header>
+        <h1>Join the participant pool</h1>
+        <p class="muted">Please read the IRB-approved consent form below, then print your name and sign.</p>
+
+        <div class="consent-doc" id="consent-doc">
+          <iframe
+            id="consent-pdf"
+            title="Research Subject Consent Form, Protocol 31285"
+            src="./consent/31285_consent_03252024.pdf#toolbar=0&navpanes=0&scrollbar=1&view=FitH"
+          ></iframe>
+        </div>
+        <p class="muted small">Scroll inside the document to read all pages of the consent form.</p>
+
+        <div class="consent-sign">
+          <div class="form">
+            <label>
+              <span id="consent-name-label">Printed name</span>
+              <input type="text" id="consentName" autocomplete="off" />
+            </label>
+            <label>
+              Date
+              <input type="text" id="consentDate" readonly />
+            </label>
+          </div>
+          <div class="signature-block">
+            <div class="signature-head">
+              <span>Signature <span class="hint">(sign with your finger or mouse)</span></span>
+              <button class="btn ghost small" id="signature-clear" type="button">Clear</button>
+            </div>
+            <canvas id="signature-pad"></canvas>
+          </div>
+        </div>
+        <div class="error" id="consent-error"></div>
+
+        <div class="actions sticky-actions">
+          <button class="btn primary" id="consent-accept">I Accept and Sign</button>
+          <button class="btn secondary" id="consent-decline">I do not agree</button>
+          <button class="btn ghost" data-back>← Back</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="screen-study">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">Today's Visit</div>
+          </div>
+        </header>
+        <h1>Study Code</h1>
+        <p class="muted">Please have the research assistant fill in this information.</p>
+        <input class="study-input" type="text" id="studyCode" autocomplete="off" />
+        <div class="error" id="study-error"></div>
+        <div class="actions">
+          <button class="btn primary" id="finish">Finish Check-In</button>
+          <button class="btn ghost" data-back>← Back</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="screen-done">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">All Set</div>
+          </div>
+        </header>
+        <h1>You're all set.</h1>
+        <p class="lead">Thank you for checking in.</p>
+        <p class="muted">Please let the research assistant know you have completed the check-in process.</p>
+        <div class="actions">
+          <button class="btn primary" id="done">Done</button>
+        </div>
+      </section>
+
+      <section class="card screen-center hidden" id="screen-no-checkin">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">No Action Needed</div>
+          </div>
+        </header>
+        <h1>You do not have to check in.</h1>
+        <p class="lead">Thank you for your time today. Nothing has been saved.</p>
+        <div class="actions">
+          <button class="btn primary" id="no-checkin-done">Done</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="./demo-backend.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
