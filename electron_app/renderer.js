@@ -255,7 +255,7 @@ const signature = (() => {
     const ratio = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(1, Math.floor(rect.width));
-    const height = 180;
+    const height = Math.max(100, Math.floor(rect.height) || 180);
     const snapshot = hasInk ? canvas.toDataURL("image/png") : null;
     canvas.width = width * ratio;
     canvas.height = height * ratio;

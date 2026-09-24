@@ -10,14 +10,23 @@
   --border: rgba(15, 23, 42, 0.1);
   --cardRadius: 28px;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-  --title: clamp(40px, 3.4vw, 56px);
-  --titleSm: clamp(34px, 2.8vw, 46px);
-  --body: clamp(18px, 1.6vw, 22px);
-  --helper: clamp(15px, 1.1vw, 18px);
+  --title: clamp(28px, 3.2vmin, 56px);
+  --titleSm: clamp(24px, 2.6vmin, 46px);
+  --body: clamp(16px, 1.7vmin, 22px);
+  --helper: clamp(14px, 1.3vmin, 18px);
+  --btnH: clamp(52px, 6.5vmin, 72px);
+  --btnFont: clamp(17px, 2vmin, 22px);
+  --gutter: clamp(16px, 3vw, 64px);
+  --vpad: clamp(20px, 3.5vh, 56px);
 }
 
 * {
   box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
@@ -26,31 +35,44 @@ body {
   background: radial-gradient(circle at top, var(--bgTop) 0%, var(--bgBottom) 100%);
   color: var(--text);
   font-size: var(--body);
-  min-height: 100vh;
+  /* Fill the viewport exactly; each card scrolls internally if it is taller. */
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  padding: 2vh 2vw;
 }
 
 .kiosk {
   position: relative;
   z-index: 1;
-  width: min(1100px, 94vw);
+  width: min(1100px, 96vw);
+  max-height: 96vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .card {
   background: rgba(255, 255, 255, 0.95);
-  padding: 56px 64px;
+  padding: var(--vpad) var(--gutter);
   border-radius: var(--cardRadius);
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
   backdrop-filter: blur(6px);
   animation: fadeUp 420ms ease;
-  min-height: min(640px, 86vh);
+  min-height: min(560px, 80vh);
+  max-height: 96vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(6px, 1.2vh, 12px);
+}
+
+/* Children of a scrolling flex column must not be squeezed. */
+.card > * {
+  flex-shrink: 0;
 }
 
 .card.screen-center {
@@ -68,8 +90,6 @@ body {
 }
 
 .card.consent {
-  max-height: 94vh;
-  overflow-y: auto;
   gap: 10px;
 }
 
@@ -77,28 +97,28 @@ body {
   background: var(--accentSoft);
   border: 2px solid var(--accent);
   color: var(--text);
-  padding: 16px 20px;
+  padding: clamp(8px, 1.4vh, 16px) 20px;
   border-radius: 14px;
-  font-size: var(--body);
-  margin: 0 0 16px 0;
+  font-size: var(--helper);
+  margin: 0 0 clamp(6px, 1.2vh, 16px) 0;
 }
 
 .banner strong {
   display: block;
   color: var(--accent);
-  font-size: 22px;
-  margin-bottom: 4px;
+  font-size: clamp(17px, 2.2vmin, 22px);
+  margin-bottom: 2px;
 }
 
 .role-toggle {
   display: flex;
   gap: 12px;
-  margin: 4px 0 18px 0;
+  margin: 2px 0 clamp(8px, 1.4vh, 18px) 0;
 }
 
 .toggle {
   flex: 1;
-  height: 60px;
+  height: calc(var(--btnH) * 0.85);
   border-radius: 16px;
   border: 1px solid var(--border);
   background: rgba(15, 23, 42, 0.04);
@@ -116,8 +136,7 @@ body {
 
 .consent-doc {
   flex: 0 0 auto;
-  height: 36vh;
-  min-height: 260px;
+  height: clamp(160px, 30vh, 480px);
   overflow-y: auto;
   padding: 22px 26px;
   border: 1px solid var(--border);
@@ -202,7 +221,7 @@ body {
 #signature-pad {
   display: block;
   width: 100%;
-  height: 180px;
+  height: clamp(120px, 18vh, 180px);
   border: 1px dashed rgba(15, 23, 42, 0.35);
   border-radius: 14px;
   background: #fff;
@@ -214,7 +233,7 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: clamp(8px, 1.5vh, 22px);
 }
 
 .mark {
@@ -240,7 +259,7 @@ body {
 
 h1 {
   font-size: var(--title);
-  margin: 0 0 14px 0;
+  margin: 0 0 clamp(6px, 1vh, 14px) 0;
   letter-spacing: -0.02em;
 }
 
@@ -251,7 +270,7 @@ h2 {
 }
 
 p {
-  margin: 0 0 16px 0;
+  margin: 0 0 clamp(6px, 1.2vh, 16px) 0;
 }
 
 .lead {
@@ -267,8 +286,9 @@ p {
 
 .actions {
   display: flex;
-  gap: 18px;
-  margin-top: 32px;
+  flex-wrap: wrap;
+  gap: clamp(10px, 1.5vmin, 18px);
+  margin-top: clamp(14px, 3vh, 32px);
   align-items: center;
 }
 
@@ -287,10 +307,10 @@ p {
 
 .btn {
   border: none;
-  height: 72px;
-  padding: 0 34px;
+  height: var(--btnH);
+  padding: 0 clamp(18px, 3vmin, 34px);
   border-radius: 18px;
-  font-size: 22px;
+  font-size: var(--btnFont);
   font-weight: 650;
   cursor: pointer;
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
@@ -311,9 +331,9 @@ p {
 .btn.ghost {
   background: transparent;
   color: var(--muted);
-  height: 56px;
+  height: calc(var(--btnH) * 0.8);
   padding: 0 18px;
-  font-size: 18px;
+  font-size: calc(var(--btnFont) * 0.85);
   border: 1px solid transparent;
 }
 
@@ -387,25 +407,31 @@ p {
 .form {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: clamp(10px, 1.6vmin, 18px);
 }
 
 .form label {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
   font-size: var(--helper);
   font-weight: 650;
   color: var(--text);
 }
 
+.form label input {
+  flex-basis: 100%;
+}
+
 .form input {
   width: 100%;
   min-width: 0;
-  margin-top: 8px;
-  padding: 16px 18px;
+  margin-top: 6px;
+  padding: clamp(10px, 1.6vmin, 16px) 18px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  font-size: 20px;
+  font-size: clamp(16px, 2vmin, 20px);
 }
 
 .form label:nth-child(3),
@@ -417,21 +443,20 @@ p {
 .hint {
   font-weight: 400;
   color: #94a3b8;
-  margin-left: 6px;
 }
 
 .note {
   background: var(--accentSoft);
   color: var(--text);
-  padding: 16px 20px;
+  padding: clamp(8px, 1.4vh, 16px) 20px;
   border-radius: 12px;
-  margin-top: 18px;
+  margin-top: clamp(8px, 1.4vh, 18px);
   font-size: var(--helper);
 }
 
 .study-input {
   width: 100%;
-  padding: 20px 22px;
+  padding: clamp(12px, 2vmin, 20px) 22px;
   border-radius: 16px;
   border: 1px solid var(--border);
   font-size: 24px;
@@ -454,4 +479,62 @@ p {
     opacity: 1;
     transform: translateY(0px);
   }
+}
+
+/* Narrow screens: single-column forms, stacked buttons. */
+@media (max-width: 900px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+  .form label:nth-child(3),
+  .form label:nth-child(4),
+  .form label:nth-child(5) {
+    grid-column: auto;
+  }
+  .role-toggle {
+    flex-direction: column;
+  }
+  .actions.split .btn,
+  .actions.stack .btn {
+    width: 100%;
+  }
+  .consent-meta {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .consent-meta dd {
+    margin-bottom: 8px;
+  }
+}
+
+/* Short screens: tighten vertical rhythm so more fits before scrolling. */
+@media (max-height: 760px) {
+  .card {
+    min-height: 0;
+    gap: 8px;
+  }
+  .brand {
+    margin-bottom: 10px;
+  }
+  h1 {
+    margin-bottom: 8px;
+  }
+  p {
+    margin-bottom: 8px;
+  }
+  .note {
+    margin-top: 8px;
+    padding: 10px 14px;
+  }
+}
+
+/* Action rows that must never scroll out of view stick to the card bottom. */
+.sticky-actions {
+  position: sticky;
+  bottom: calc(-1 * var(--vpad));
+  margin-bottom: calc(-1 * var(--vpad));
+  padding: 10px 0 calc(var(--vpad) * 0.6) 0;
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid var(--border);
+  z-index: 2;
 }

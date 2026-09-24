@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Temple Participant Pool</title>
-    <link rel="stylesheet" href="./styles.css?v=5" />
+    <link rel="stylesheet" href="./styles.css?v=8" />
   </head>
   <body>
     <main class="kiosk">
@@ -78,7 +78,7 @@
         <div class="note" id="contact-note">Please provide both email and phone number.</div>
         <div class="error" id="info-error"></div>
 
-        <div class="actions">
+        <div class="actions sticky-actions">
           <button class="btn primary" id="info-continue">Continue</button>
           <button class="btn ghost" data-back>← Back</button>
         </div>
@@ -248,16 +248,14 @@
               <span>Signature <span class="hint">(sign with your finger or mouse)</span></span>
               <button class="btn ghost small" id="signature-clear" type="button">Clear</button>
             </div>
-            <canvas id="signature-pad" height="180"></canvas>
+            <canvas id="signature-pad"></canvas>
           </div>
         </div>
         <div class="error" id="consent-error"></div>
 
-        <div class="actions split">
+        <div class="actions sticky-actions">
           <button class="btn primary" id="consent-accept">I Accept and Sign</button>
           <button class="btn secondary" id="consent-decline">I do not agree</button>
-        </div>
-        <div class="actions">
           <button class="btn ghost" data-back>← Back</button>
         </div>
       </section>
