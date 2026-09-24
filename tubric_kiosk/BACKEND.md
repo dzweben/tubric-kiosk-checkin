@@ -1,6 +1,6 @@
 # TUBRIC Kiosk Backend (Storage + Matching)
 
-This document describes the backend storage and matching logic used by the kiosk app in `survey.py`. The UI is unchanged; all changes are in the save/match layer.
+This document describes the backend storage and matching logic in `survey.py`, used by the Electron kiosk through `kiosk_backend_cli.py`.
 
 ## Check-in flow (Electron kiosk)
 1. **Sign in**: legal name, DOB, email, phone, and who is filling it in.
@@ -24,9 +24,7 @@ uploaded to the `consent_signature` file field. After verification the local
 name and PNG are scrubbed; `consent_date` and `consent_signed_at` are kept so
 the person is not asked to consent again.
 
-The Tk app (`survey.py` run directly) is legacy: it still uses the older
-privacy + contact-consent screens and has no signature pad. Use the Electron
-kiosk (`Run_TUBRIC_Electron.command`).
+Launch the kiosk with `Run_TUBRIC_Electron.command`.
 
 ## Overview
 The kiosk uses **CSV as the source of truth**:
@@ -34,7 +32,7 @@ The kiosk uses **CSV as the source of truth**:
 - De-identified exports are written inside the Git repo for safe syncing.
 
 ## Files
-- `tubric_kiosk/survey.py`: UI + backend logic (matching, GUID creation, visit tracking)
+- `tubric_kiosk/survey.py`: backend logic (matching, consent, GUID creation, visit tracking, REDCap push)
 - `/Users/dannyzweben/Desktop/TUBRIC/ID-data/db_exports/`: private CSVs (full data)
 - `db_exports/`: de-identified CSVs in the repo
 - `tubric_kiosk/tubric_profiles.json`: legacy file (auto-migrated once if present)

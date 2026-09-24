@@ -5,5 +5,5 @@
 3. Confirm the REDCap project has `consent_name` (text), `consent_date` (date Y-M-D) and `consent_signature` (file, signature) on the participant instrument and that the API token can import files; `redcap_build/generate_data_dictionary.py` now includes them.
 4. RedCap push: ensure the API push + verification flow is robust before local PII scrubbing.
 5. The four rows currently in ID-data were scrubbed before the index existed and have no hashes, so they can never match again. They are test records; delete them (and their REDCap records) before real use, or re-enter them once to re-index.
-6. Tk app (`survey.py` UI) is legacy and still shows the old two-step consent; retire it or port the consent + signature flow.
+6. ~~Tk app~~ removed 2026-09-24; the Electron kiosk is the only UI.
 7. Rebuild tubric_kiosk/.venv: its python symlinks to a removed FSL install. Launchers now fall back to system python3, but the venv should be recreated.
