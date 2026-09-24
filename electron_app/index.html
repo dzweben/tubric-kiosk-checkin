@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Temple Participant Pool</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=4" />
   </head>
   <body>
     <main class="kiosk">
@@ -18,86 +18,32 @@
         </header>
 
         <h1>Welcome to the Temple Participant Pool</h1>
-        <p class="lead">Tap below to begin check-in.</p>
+        <p class="lead">Tap below to sign in for your visit today.</p>
         <p class="muted">Parents/guardians: please enter the participant's information.</p>
         <div class="actions">
-          <button class="btn primary" data-next="screen-privacy">Start Check-In</button>
+          <button class="btn primary" data-next="screen-signin">Sign In</button>
         </div>
       </section>
 
-      <section class="card screen-center hidden" id="screen-privacy">
+      <section class="card hidden" id="screen-signin">
         <header class="brand">
           <div class="mark" aria-hidden="true"></div>
           <div>
             <div class="kicker">TEMPLE PARTICIPANT POOL</div>
-            <div class="kicker-sub">Privacy & Use of Information</div>
+            <div class="kicker-sub">Sign In</div>
           </div>
         </header>
-
-        <h1>About this participant pool</h1>
-        <p class="lead">
-          Your information will be kept completely private and used only within
-          the Temple Participant Pool to support research operations and analysis.
+        <h1>Sign In</h1>
+        <p class="muted" id="info-subtitle">
+          Enter the participant's full legal name and date of birth exactly as on previous visits.
         </p>
-        <p class="muted">
-          If you do not wish to proceed, you do not need to check in today.
-        </p>
-        <div class="actions split">
-          <button class="btn primary" data-privacy="yes">I agree, continue</button>
-          <button class="btn secondary" data-privacy="no">I do not agree</button>
-        </div>
-        <div class="actions">
-          <button class="btn ghost" data-back>← Back</button>
-        </div>
-      </section>
 
-      <section class="card screen-center hidden" id="screen-consent">
-        <header class="brand">
-          <div class="mark" aria-hidden="true"></div>
-          <div>
-            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
-            <div class="kicker-sub">Contact Permission</div>
-          </div>
-        </header>
-        <h1>May we contact you about future research opportunities?</h1>
-        <div class="actions split">
-          <button class="btn primary" data-consent="Yes">Yes, contact me</button>
-          <button class="btn secondary" data-consent="No">No, do not contact me</button>
+        <div class="role-toggle" role="group" aria-label="Who is completing this form">
+          <button class="toggle active" data-role="participant" type="button">I am the participant</button>
+          <button class="toggle" data-role="guardian" type="button">I am a parent/guardian</button>
         </div>
-        <div class="actions">
-          <button class="btn ghost" data-back>← Back</button>
-        </div>
-      </section>
 
-      <section class="card hidden" id="screen-role">
-        <header class="brand">
-          <div class="mark" aria-hidden="true"></div>
-          <div>
-            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
-            <div class="kicker-sub">Who is checking in?</div>
-          </div>
-        </header>
-        <h1>Please select who is completing this form.</h1>
-        <p class="muted">Parents/guardians: enter the participant's information on the next screen.</p>
-        <div class="actions stack">
-          <button class="btn primary" data-role="participant">I am the participant</button>
-          <button class="btn secondary" data-role="guardian">I am a parent/guardian</button>
-        </div>
-        <button class="btn ghost" data-back>← Back</button>
-      </section>
-
-      <section class="card hidden" id="screen-info">
-        <header class="brand">
-          <div class="mark" aria-hidden="true"></div>
-          <div>
-            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
-            <div class="kicker-sub">Participant Information</div>
-          </div>
-        </header>
-        <h1>Participant Information</h1>
-        <p class="muted" id="info-subtitle">Please enter your full legal name and date of birth exactly as you did on previous visits.</p>
-
-        <form class="form" id="info-form">
+        <form class="form" id="info-form" autocomplete="off">
           <label>
             Legal First Name <span class="hint">(as on previous visits)</span>
             <input type="text" id="firstName" autocomplete="off" />
@@ -120,11 +66,168 @@
           </label>
         </form>
 
-        <div class="note" id="contact-note">Please provide both email and phone number.</div>
+        <div class="note" id="contact-note">
+          Please provide both email and phone number. Parents/guardians may enter their own if the participant has none.
+        </div>
         <div class="error" id="info-error"></div>
 
         <div class="actions">
           <button class="btn primary" id="info-continue">Continue</button>
+          <button class="btn ghost" data-back>← Back</button>
+        </div>
+      </section>
+
+      <section class="card consent hidden" id="screen-consent">
+        <header class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div>
+            <div class="kicker">TEMPLE PARTICIPANT POOL</div>
+            <div class="kicker-sub">Research Subject Consent Form</div>
+          </div>
+        </header>
+        <h1>Join the participant pool</h1>
+        <p class="muted">
+          Please read the consent form below. By accepting and signing, you agree to join the
+          Temple Participant Pool and to be contacted about current and future study opportunities.
+        </p>
+
+        <div class="consent-doc" id="consent-doc" tabindex="0">
+          <h2>Research Subject Consent Form</h2>
+          <dl class="consent-meta">
+            <dt>Title:</dt><dd>Temple University Psychology and Neuroscience Participant Database</dd>
+            <dt>Protocol No.:</dt><dd>31285</dd>
+            <dt>Sponsor:</dt><dd>No Sponsor</dd>
+            <dt>Investigator:</dt><dd>Dr. David V. Foster-Smith<br />1701 N 13th Street<br />Philadelphia, PA 19122<br />United States of America</dd>
+            <dt>Daytime Phone Number:</dt><dd>(215) 204-1552</dd>
+          </dl>
+
+          <h3>Detailed Research Consent</h3>
+          <p>You are being invited to take part in a research program. A person who takes part in a research study is called a program participant.</p>
+          <p>In this consent form “you” generally refers to the program participant. If you are being asked as the legally authorized representative, parent, or guardian to permit the participant to take part in the program, “you” in the rest of this form generally means the program participant.</p>
+
+          <h4>What should I know about this program?</h4>
+          <ul>
+            <li>Someone will explain this program to you.</li>
+            <li>This form sums up that explanation.</li>
+            <li>Taking part in this program is voluntary. Whether you take part is up to you.</li>
+            <li>You can choose not to take part. There will be no penalty or loss of benefits to which you are otherwise entitled.</li>
+            <li>You can agree to take part and later change your mind. There will be no penalty or loss of benefits to which you are otherwise entitled.</li>
+            <li>If you don’t understand, ask questions.</li>
+            <li>Ask all of the questions you want before you decide.</li>
+          </ul>
+
+          <h4>What is the purpose of this program?</h4>
+          <p>The purpose of this program is to provide the research labs within the Psychology and Neuroscience Department of Temple University with a way to recruit participants who have participated in past studies for current studies that are open to participation.</p>
+
+          <h4>How long will I be in this program?</h4>
+          <p>Your taking part in this program will continue until you choose to no longer be contacted for any future studies. Since many of the research labs at Temple University enroll people of all age ranges, there will generally be no reason to remove you from the program unless you so choose.</p>
+
+          <h4>What happens to me if I agree to take part in this program?</h4>
+          <p>If you choose to take part in this program, we will aggregate your contact information and basic demographics into the HIPAA compliant database. Researchers will then be able to contact you on behalf of their lab to make you aware of current study opportunities. The following general information will be included in the database:</p>
+          <ul>
+            <li>Full Legal Name</li>
+            <li>Phone Number</li>
+            <li>Email Address</li>
+            <li>Residential Address</li>
+            <li>Race and Ethnicity</li>
+            <li>Age</li>
+            <li>Gender</li>
+            <li>Height and Weight</li>
+            <li>Sex Assigned at Birth</li>
+            <li>Psychiatric Diagnoses</li>
+            <li>Currently Prescribed Medications</li>
+          </ul>
+
+          <h4>What are my responsibilities if I take part in this research?</h4>
+          <p>If you take part in this program, you will be responsible to:</p>
+          <ul>
+            <li>Respond to messages about studies that may interest you</li>
+            <li>Notify researchers of your current study enrollment status</li>
+            <li>Notify researchers if you choose to opt out of the program</li>
+          </ul>
+
+          <h4>Could being in this research hurt me?</h4>
+          <p>There is no risk of physical harm or discomfort if you choose to participate in this program. However, though personal information is kept in a HIPAA compliant database, there is always potential risk for a breach of confidentiality.</p>
+
+          <h4>Will it cost me money to take part in this research?</h4>
+          <p>Choosing to enroll in this program has no related financial costs.</p>
+
+          <h4>Will being in this research benefit me?</h4>
+          <p>We cannot promise any benefits to you or others from your taking part in this program. However, possible benefits to you include up-to-date information on current studies in the department of Psychology and Neuroscience at Temple University.</p>
+
+          <h4>What happens to the information collected for this research?</h4>
+          <p>Your private information may be shared with individuals and organizations that conduct or watch over this program, including:</p>
+          <ul>
+            <li>Government agencies, such as the Food and Drug Administration or the Department of Health and Human Services</li>
+            <li>The Institutional Review Board (IRB) that reviewed this research</li>
+            <li>Temple University</li>
+            <li>Temple University Health System and its affiliates</li>
+          </ul>
+          <p>We protect your information from disclosure to others to the extent required by law. We cannot promise complete secrecy.</p>
+
+          <h4>Who can answer my questions about this research?</h4>
+          <p>If you have questions, concerns, or complaints, or think this program has hurt you or made you sick, talk to the research team at the phone number listed above on the first page.</p>
+          <p>This research is being overseen by an Institutional Review Board (“IRB”). An IRB is a group of people who perform independent review of research studies. You may talk to them at (215) 707-3390 or irb@temple.edu if:</p>
+          <ul>
+            <li>You have questions, concerns, or complaints that are not being answered by the research team.</li>
+            <li>You are not getting answers from the research team.</li>
+            <li>You cannot reach the research team.</li>
+            <li>You want to talk to someone else about the research.</li>
+            <li>You have questions about your rights as a research subject.</li>
+          </ul>
+
+          <h4>Can I be removed from this research without my approval?</h4>
+          <p>The person in charge of this research can remove you from this research without your approval. Possible reasons for removal include:</p>
+          <ul>
+            <li>It is in your best interest</li>
+            <li>You have a side effect that requires stopping participation in the program</li>
+            <li>You become pregnant</li>
+            <li>The program is canceled by the sponsor</li>
+            <li>You are unable to keep your scheduled appointments</li>
+          </ul>
+          <p>We will tell you about any new information that may affect your health, welfare, or choice to stay in this program.</p>
+
+          <h4>What happens if I agree to be in this program, but I change my mind later?</h4>
+          <p>If you decide to leave this research, contact the research team so that the investigator can remove your personal information from the HIPAA compliant database.</p>
+          <p>Data collected at the point of your withdrawal will be deleted from the HIPAA compliant database, and researchers will no longer be able to contact you. You are free to express the reason for your withdrawal with the study coordinators or research personnel you are in contact with at that point in time.</p>
+
+          <h3>Consent</h3>
+          <ul>
+            <li>I understand that there may be no direct benefit for my participation.</li>
+            <li>I understand that my participation will not cost me anything other than the time and effort involved.</li>
+            <li>I understand that the information obtained from this study will be confidential. It will be available to the investigators within the program and to me.</li>
+            <li>I understand that by signing this agreement, I do not waive any legal rights or release Temple University or its agents from liability.</li>
+            <li>I understand that this consent is voluntary and I may withdraw from this program at any time without penalty.</li>
+          </ul>
+          <p><strong>By clicking “I Accept” and signing below you agree to take part in this program and allow the research team to contact you about current and future study opportunities.</strong></p>
+        </div>
+
+        <div class="consent-sign">
+          <div class="form">
+            <label>
+              <span id="consent-name-label">Printed name</span>
+              <input type="text" id="consentName" autocomplete="off" />
+            </label>
+            <label>
+              Date
+              <input type="text" id="consentDate" readonly />
+            </label>
+          </div>
+          <div class="signature-block">
+            <div class="signature-head">
+              <span>Signature <span class="hint">(sign with your finger or mouse)</span></span>
+              <button class="btn ghost small" id="signature-clear" type="button">Clear</button>
+            </div>
+            <canvas id="signature-pad" height="180"></canvas>
+          </div>
+        </div>
+        <div class="error" id="consent-error"></div>
+
+        <div class="actions split">
+          <button class="btn primary" id="consent-accept">I Accept and Sign</button>
+          <button class="btn secondary" id="consent-decline">I do not agree</button>
+        </div>
+        <div class="actions">
           <button class="btn ghost" data-back>← Back</button>
         </div>
       </section>
@@ -172,7 +275,7 @@
           </div>
         </header>
         <h1>You do not have to check in.</h1>
-        <p class="lead">Thank you for your time today.</p>
+        <p class="lead">Thank you for your time today. Nothing has been saved.</p>
         <div class="actions">
           <button class="btn primary" id="no-checkin-done">Done</button>
         </div>
@@ -184,11 +287,9 @@
         <button class="modal-close" id="guardian-contact-close" aria-label="Close">×</button>
         <h2>Parent/guardian contact</h2>
         <p class="muted">
-          You selected “Yes” to receive future opportunities. The form above
-          asks for the participant’s information. If you want the newsletter to
-          go to you instead, enter your email and phone number below. If the
-          participant’s contact is already the one you want the newsletter to go
-          to, you can close this.
+          The form asked for the participant’s information. If you want the newsletter to go to
+          you instead, enter your email and phone number below. If the participant’s contact is
+          already the one you want, you can close this.
         </p>
         <div class="modal-form">
           <label>
@@ -213,20 +314,6 @@
         <div class="error" id="guardian-error"></div>
         <div class="actions">
           <button class="btn primary" id="guardian-contact-ok">Continue</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal hidden" id="contact-modal" role="dialog" aria-modal="true">
-      <div class="modal-card">
-        <h2>Thanks for opting in</h2>
-        <p class="muted">
-          You selected “Yes, contact me.” You will be added to a newsletter that
-          occasionally emails participants about upcoming projects. You can let
-          us know at a future time if you would like to be removed.
-        </p>
-        <div class="actions">
-          <button class="btn primary" id="contact-modal-ok">OK</button>
         </div>
       </div>
     </div>

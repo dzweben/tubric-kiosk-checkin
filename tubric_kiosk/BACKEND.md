@@ -2,6 +2,32 @@
 
 This document describes the backend storage and matching logic used by the kiosk app in `survey.py`. The UI is unchanged; all changes are in the save/match layer.
 
+## Check-in flow (Electron kiosk)
+1. **Sign in**: legal name, DOB, email, phone, and who is filling it in.
+2. **Lookup** (`lookup_person`, CLI `{"action": "lookup"}`): hashed-index match.
+   If the person exists and has already signed consent (local
+   `consent_signed_at`, confirmed against REDCap `consent_date` /
+   `consent_name` / `consent_signature` when the API is reachable) they go
+   straight to the study code.
+3. **Consent** (only when not matched or not yet consented): the IRB
+   protocol 31285 consent form is shown in full; the participant prints their
+   name, the date is filled automatically, and they draw a signature. Joining
+   the pool and agreeing to be contacted are one consent. Declining ends the
+   session and nothing is saved.
+4. **Study code** entered by the RA, then `submit_checkin`.
+
+Consent is stored as `consent_name`, `consent_date`, `consent_signed_at` on
+the participant row and the signature PNG at
+`ID-data/signatures/<guid>.png`. On REDCap push the name and date go on the
+participant instrument (`consent_name`, `consent_date`) and the PNG is
+uploaded to the `consent_signature` file field. After verification the local
+name and PNG are scrubbed; `consent_date` and `consent_signed_at` are kept so
+the person is not asked to consent again.
+
+The Tk app (`survey.py` run directly) is legacy: it still uses the older
+privacy + contact-consent screens and has no signature pad. Use the Electron
+kiosk (`Run_TUBRIC_Electron.command`).
+
 ## Overview
 The kiosk uses **CSV as the source of truth**:
 - Full, identifiable data is written to a private folder outside the Git repo.

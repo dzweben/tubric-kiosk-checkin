@@ -1,7 +1,7 @@
 const screens = Array.from(document.querySelectorAll(".card"));
 const state = {
   consent_contact: null,
-  is_guardian: null,
+  is_guardian: "participant",
   first_name: "",
   last_name: "",
   dob: "",
@@ -11,7 +11,11 @@ const state = {
   newsletter_email: "",
   newsletter_phone: "",
   newsletter_pref: "",
+  consent_name: "",
+  consent_date: "",
+  consent_signature: "",
 };
+let lookup = { matched: false, guid: "", consented: false };
 let guardianNoticeShown = false;
 
 function showScreen(id) {
@@ -19,6 +23,12 @@ function showScreen(id) {
   document.getElementById(id).classList.remove("hidden");
 }
 
+function currentScreen() {
+  const current = screens.find((s) => !s.classList.contains("hidden"));
+  return current ? current.id : "";
+}
+
+// ---------- formatting / validation ----------
 function formatDOB(value) {
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length >= 5) return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
@@ -46,11 +56,7 @@ function isValidDob(dob) {
   if (dd < 1 || dd > 31) return false;
   if (yyyy < 1900 || yyyy > 2100) return false;
   const date = new Date(yyyy, mm - 1, dd);
-  return (
-    date.getFullYear() === yyyy &&
-    date.getMonth() === mm - 1 &&
-    date.getDate() === dd
-  );
+  return date.getFullYear() === yyyy && date.getMonth() === mm - 1 && date.getDate() === dd;
 }
 
 function isValidEmail(email) {
@@ -61,30 +67,23 @@ function normalizePhoneDigits(phone) {
   return phone.replace(/\D/g, "");
 }
 
-function contactAllowed() {
-  return state.consent_contact === "Yes";
+function todayParts() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return { display: `${mm}-${dd}-${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
 }
 
+// ---------- sign-in screen ----------
 function setInfoSubtitle() {
   const sub = document.getElementById("info-subtitle");
-  const allowed = contactAllowed();
   if (state.is_guardian === "guardian") {
     sub.textContent =
-      "You indicated you are a parent/guardian. Enter the PARTICIPANT'S full legal name and date of birth exactly as on previous visits." +
-      (allowed ? " If the participant does not have an email or phone, you may enter your own." : "");
+      "You indicated you are a parent/guardian. Enter the PARTICIPANT'S full legal name and date of birth exactly as on previous visits.";
   } else {
     sub.textContent =
       "Please enter your full legal name and date of birth exactly as you did on previous visits.";
-  }
-
-  // No contact consent means no contact information is collected at all.
-  const show = allowed ? "remove" : "add";
-  document.getElementById("email-field").classList[show]("hidden");
-  document.getElementById("phone-field").classList[show]("hidden");
-  document.getElementById("contact-note").classList[show]("hidden");
-  if (!allowed) {
-    document.getElementById("email").value = "";
-    document.getElementById("phone").value = "";
   }
 }
 
@@ -92,58 +91,23 @@ document.querySelectorAll("[data-next]").forEach((btn) => {
   btn.addEventListener("click", () => showScreen(btn.dataset.next));
 });
 
-const contactModal = document.getElementById("contact-modal");
-const contactModalOk = document.getElementById("contact-modal-ok");
-const guardianModal = document.getElementById("guardian-contact-modal");
-const guardianModalOk = document.getElementById("guardian-contact-ok");
-const guardianModalClose = document.getElementById("guardian-contact-close");
-const guardianEmailInput = document.getElementById("guardianEmail");
-const guardianPhoneInput = document.getElementById("guardianPhone");
-const guardianError = document.getElementById("guardian-error");
-const guardianOptions = document.getElementById("guardian-options");
-
-document.querySelectorAll("[data-consent]").forEach((btn) => {
+document.querySelectorAll(".role-toggle [data-role]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    state.consent_contact = btn.dataset.consent;
-    if (state.consent_contact === "Yes") {
-      contactModal.classList.remove("hidden");
-    } else {
-      showScreen("screen-role");
-    }
-  });
-});
-
-contactModalOk.addEventListener("click", () => {
-  contactModal.classList.add("hidden");
-  showScreen("screen-role");
-});
-
-document.querySelectorAll("[data-role]").forEach((btn) => {
-  btn.addEventListener("click", () => {
+    document.querySelectorAll(".role-toggle [data-role]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
     state.is_guardian = btn.dataset.role;
     setInfoSubtitle();
-    showScreen("screen-info");
   });
 });
 
 document.querySelectorAll("[data-back]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const current = screens.find((s) => !s.classList.contains("hidden"));
-    if (!current) return;
-    if (current.id === "screen-privacy") return showScreen("screen-welcome");
-    if (current.id === "screen-consent") return showScreen("screen-privacy");
-    if (current.id === "screen-role") return showScreen("screen-consent");
-    if (current.id === "screen-info") return showScreen("screen-role");
-    if (current.id === "screen-study") return showScreen("screen-info");
-  });
-});
-
-document.querySelectorAll("[data-privacy]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    if (btn.dataset.privacy === "yes") {
-      showScreen("screen-consent");
-    } else {
-      showScreen("screen-no-checkin");
+    const current = currentScreen();
+    if (current === "screen-signin") return showScreen("screen-welcome");
+    if (current === "screen-consent") return showScreen("screen-signin");
+    if (current === "screen-study") {
+      // Only revisit the consent form if it was actually shown this session.
+      return showScreen(lookup.consented ? "screen-signin" : "screen-consent");
     }
   });
 });
@@ -158,7 +122,8 @@ phoneInput.addEventListener("input", (e) => {
   e.target.value = formatPhone(e.target.value);
 });
 
-document.getElementById("info-continue").addEventListener("click", () => {
+const infoContinue = document.getElementById("info-continue");
+infoContinue.addEventListener("click", async () => {
   const error = document.getElementById("info-error");
   error.textContent = "";
 
@@ -176,35 +141,194 @@ document.getElementById("info-continue").addEventListener("click", () => {
     error.textContent = "Please enter date of birth as MM-DD-YYYY.";
     return;
   }
-  if (contactAllowed()) {
-    if (!email || !isValidEmail(email)) {
-      error.textContent = "Please enter a valid email address.";
-      return;
-    }
-    if (!phone) {
-      error.textContent = "Please enter a phone number.";
-      return;
-    }
-    if (normalizePhoneDigits(phone).length !== 10) {
-      error.textContent = "Please enter a valid 10-digit phone number.";
-      return;
-    }
+  if (!email || !isValidEmail(email)) {
+    error.textContent = "Please enter a valid email address.";
+    return;
+  }
+  if (!phone) {
+    error.textContent = "Please enter a phone number.";
+    return;
+  }
+  if (normalizePhoneDigits(phone).length !== 10) {
+    error.textContent = "Please enter a valid 10-digit phone number.";
+    return;
   }
 
   state.first_name = first;
   state.last_name = last;
   state.dob = normalizeDob(dob);
-  state.email = contactAllowed() ? email : "";
-  state.phone = contactAllowed() ? phone : "";
+  state.email = email;
+  state.phone = phone;
 
-  if (state.is_guardian === "guardian" && state.consent_contact === "Yes" && !guardianNoticeShown) {
+  // Ask the backend whether this person already exists and has signed consent.
+  infoContinue.disabled = true;
+  infoContinue.textContent = "Checking…";
+  try {
+    lookup = await window.tubric.lookup(state);
+  } catch (err) {
+    // If the lookup fails, fall back to showing the consent form: re-consenting
+    // is harmless, skipping consent for a new person is not.
+    lookup = { matched: false, guid: "", consented: false };
+  } finally {
+    infoContinue.disabled = false;
+    infoContinue.textContent = "Continue";
+  }
+
+  if (lookup.matched && lookup.consented) {
+    state.consent_contact = "Yes";
+    showScreen("screen-study");
+    return;
+  }
+
+  prepareConsentScreen();
+  showScreen("screen-consent");
+});
+
+// ---------- consent screen ----------
+const consentName = document.getElementById("consentName");
+const consentDate = document.getElementById("consentDate");
+const consentNameLabel = document.getElementById("consent-name-label");
+const consentError = document.getElementById("consent-error");
+
+function prepareConsentScreen() {
+  consentError.textContent = "";
+  const today = todayParts();
+  consentDate.value = today.display;
+  state.consent_date = today.iso;
+  if (state.is_guardian === "guardian") {
+    consentNameLabel.textContent = "Parent/guardian printed name";
+    consentName.value = "";
+  } else {
+    consentNameLabel.textContent = "Printed name";
+    consentName.value = `${state.first_name} ${state.last_name}`.trim();
+  }
+  signature.clear();
+  document.getElementById("consent-doc").scrollTop = 0;
+}
+
+// Simple signature pad on a canvas. Tracks whether any ink was laid down.
+const signature = (() => {
+  const canvas = document.getElementById("signature-pad");
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let hasInk = false;
+  let last = null;
+
+  function resize() {
+    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.floor(rect.width));
+    const height = 180;
+    const snapshot = hasInk ? canvas.toDataURL("image/png") : null;
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#0b1220";
+    if (snapshot) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, width, height);
+      img.src = snapshot;
+    }
+  }
+
+  function pos(evt) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+  }
+
+  canvas.addEventListener("pointerdown", (evt) => {
+    evt.preventDefault();
+    canvas.setPointerCapture(evt.pointerId);
+    drawing = true;
+    last = pos(evt);
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(last.x + 0.1, last.y + 0.1);
+    ctx.stroke();
+    hasInk = true;
+  });
+  canvas.addEventListener("pointermove", (evt) => {
+    if (!drawing) return;
+    evt.preventDefault();
+    const p = pos(evt);
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    last = p;
+  });
+  const stop = () => {
+    drawing = false;
+    last = null;
+  };
+  canvas.addEventListener("pointerup", stop);
+  canvas.addEventListener("pointercancel", stop);
+  canvas.addEventListener("pointerleave", stop);
+
+  window.addEventListener("resize", resize);
+  // Size once the consent screen is visible (hidden canvases have no width).
+  const observer = new MutationObserver(() => {
+    if (!document.getElementById("screen-consent").classList.contains("hidden")) resize();
+  });
+  observer.observe(document.getElementById("screen-consent"), { attributes: true, attributeFilter: ["class"] });
+
+  return {
+    clear() {
+      hasInk = false;
+      resize();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    },
+    isEmpty() {
+      return !hasInk;
+    },
+    toDataURL() {
+      return canvas.toDataURL("image/png");
+    },
+  };
+})();
+
+document.getElementById("signature-clear").addEventListener("click", () => signature.clear());
+
+document.getElementById("consent-accept").addEventListener("click", () => {
+  consentError.textContent = "";
+  const name = consentName.value.trim();
+  if (!name) {
+    consentError.textContent = "Please print your full name.";
+    return;
+  }
+  if (signature.isEmpty()) {
+    consentError.textContent = "Please sign in the box above.";
+    return;
+  }
+  state.consent_name = name;
+  state.consent_signature = signature.toDataURL();
+  state.consent_contact = "Yes";
+
+  if (state.is_guardian === "guardian" && !guardianNoticeShown) {
     guardianNoticeShown = true;
     guardianModal.classList.remove("hidden");
     return;
   }
-
   showScreen("screen-study");
 });
+
+document.getElementById("consent-decline").addEventListener("click", () => {
+  // Nothing is saved: the backend is never called on this path.
+  showScreen("screen-no-checkin");
+});
+
+// ---------- guardian newsletter modal ----------
+const guardianModal = document.getElementById("guardian-contact-modal");
+const guardianModalOk = document.getElementById("guardian-contact-ok");
+const guardianModalClose = document.getElementById("guardian-contact-close");
+const guardianEmailInput = document.getElementById("guardianEmail");
+const guardianPhoneInput = document.getElementById("guardianPhone");
+const guardianError = document.getElementById("guardian-error");
+const guardianOptions = document.getElementById("guardian-options");
 
 function closeGuardianModal() {
   guardianError.textContent = "";
@@ -257,7 +381,9 @@ guardianModalOk.addEventListener("click", () => {
 });
 guardianModalClose.addEventListener("click", closeGuardianModal);
 
-document.getElementById("finish").addEventListener("click", async () => {
+// ---------- study code / finish ----------
+const finishBtn = document.getElementById("finish");
+finishBtn.addEventListener("click", async () => {
   const error = document.getElementById("study-error");
   error.textContent = "";
   const code = document.getElementById("studyCode").value.trim();
@@ -267,12 +393,16 @@ document.getElementById("finish").addEventListener("click", async () => {
   }
 
   state.tubric_study_code = code;
-
+  finishBtn.disabled = true;
+  finishBtn.textContent = "Saving…";
   try {
     await window.tubric.submitCheckin(state);
     showScreen("screen-done");
   } catch (err) {
     error.textContent = "Submission failed. Please try again or alert staff.";
+  } finally {
+    finishBtn.disabled = false;
+    finishBtn.textContent = "Finish Check-In";
   }
 });
 
@@ -283,3 +413,5 @@ document.getElementById("done").addEventListener("click", () => {
 document.getElementById("no-checkin-done").addEventListener("click", () => {
   window.location.reload();
 });
+
+setInfoSubtitle();

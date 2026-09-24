@@ -103,6 +103,8 @@ def build_import_rows(payload: dict, record_id: str, repeat_max: dict) -> list[d
             "newsletter_phone": participant.get("newsletter_phone", ""),
             "newsletter_pref": participant.get("newsletter_pref", ""),
             "consent_participant": participant.get("consent_participant", ""),
+            "consent_name": participant.get("consent_name", ""),
+            "consent_date": participant.get("consent_date", ""),
             "created_at": participant.get("created_at", ""),
             "last_seen_at": participant.get("last_seen_at", ""),
         }

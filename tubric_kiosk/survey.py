@@ -10,6 +10,7 @@ import sys
 import hashlib
 import secrets
 import unicodedata
+import base64
 
 APP_TITLE = "Temple Participant Pool"
 SITE_NAME = "the Temple Participant Pool"
@@ -50,6 +51,9 @@ DEID_EXPORT_DIR = os.environ.get("TUBRIC_DEID_DIR") or os.path.join(BASE_DIR, "d
 
 # Salt for the hashed identity index. Lives with the private data, never in the repo.
 IDENTITY_SALT_PATH = os.path.join(PRIVATE_DIR, "identity_salt.txt")
+
+# Drawn consent signatures wait here (PNG per GUID) until pushed to REDCap.
+SIGNATURE_DIR = os.path.join(PRIVATE_DIR, "signatures")
 
 # Matching threshold (see find_person for the scoring table).
 MATCH_THRESHOLD = 4
@@ -337,6 +341,8 @@ def load_guid_db():
                 "created_at": p.get("created_at", ""),
                 "last_seen_at": p.get("last_seen_at", ""),
                 "contact_updates": contact_by_guid.get(guid, []),
+                "consent_date": p.get("consent_date", "") or "",
+                "consent_signed_at": p.get("consent_signed_at", "") or "",
                 "dob_hash": p.get("dob_hash", "") or "",
                 "first_hashes": _split_list(p.get("first_hashes", "")),
                 "last_hash": p.get("last_hash", "") or "",
@@ -397,6 +403,9 @@ def load_participants_db():
                 "newsletter_phones": _split_list(p.get("newsletter_phones", "")),
                 "newsletter_pref": p.get("newsletter_pref", ""),
                 "consent_contact": p.get("consent_contact", ""),
+                "consent_name": p.get("consent_name", "") or "",
+                "consent_date": p.get("consent_date", "") or "",
+                "consent_signed_at": p.get("consent_signed_at", "") or "",
                 "created_at": p.get("created_at", ""),
                 "visits": visits_by_guid.get(guid, []),
                 "contact_updates": contacts_by_guid.get(guid, []),
@@ -499,6 +508,8 @@ def export_guid_csv(guid_db):
                 "newsletter_pref": p.get("newsletter_pref", ""),
                 "created_at": p.get("created_at", ""),
                 "last_seen_at": p.get("last_seen_at", ""),
+                "consent_date": p.get("consent_date", ""),
+                "consent_signed_at": p.get("consent_signed_at", ""),
                 "dob_hash": p.get("dob_hash", ""),
                 "first_hashes": "|".join(p.get("first_hashes", [])),
                 "last_hash": p.get("last_hash", ""),
@@ -535,6 +546,8 @@ def export_guid_csv(guid_db):
             "newsletter_pref",
             "created_at",
             "last_seen_at",
+            "consent_date",
+            "consent_signed_at",
             "dob_hash",
             "first_hashes",
             "last_hash",
@@ -570,6 +583,9 @@ def export_participants_csv(participants_db):
                 "newsletter_phones": "|".join(p.get("newsletter_phones", [])),
                 "newsletter_pref": p.get("newsletter_pref", ""),
                 "consent_contact": p.get("consent_contact", ""),
+                "consent_name": p.get("consent_name", ""),
+                "consent_date": p.get("consent_date", ""),
+                "consent_signed_at": p.get("consent_signed_at", ""),
                 "created_at": p.get("created_at", ""),
             }
         )
@@ -615,6 +631,9 @@ def export_participants_csv(participants_db):
             "newsletter_phones",
             "newsletter_pref",
             "consent_contact",
+            "consent_name",
+            "consent_date",
+            "consent_signed_at",
             "created_at",
         ],
         participant_rows,
@@ -755,9 +774,12 @@ def _build_redcap_payload(guid, person, participant, visit, visit_datetime):
             "newsletter_phone": newsletter_phone,
             "newsletter_pref": newsletter_pref,
             "consent_participant": _yesno_to_redcap(consent_participant),
+            "consent_name": (participant or {}).get("consent_name", "") or "",
+            "consent_date": (participant or {}).get("consent_date", "") or person.get("consent_date", ""),
             "created_at": created_at,
             "last_seen_at": last_seen_at,
         },
+        "signature_path": signature_path(guid) if os.path.exists(signature_path(guid)) else "",
         "visit": {
             "visit_number": visit.get("visit_number", ""),
             "visit_datetime": visit.get("visit_datetime", ""),
@@ -822,6 +844,11 @@ def auto_push_redcap(payload, guid_db=None, participants_db=None):
         csv_text = rows_to_csv(rows)
 
         import_records(api_url, token, csv_text)
+
+        sig_path = payload.get("signature_path", "")
+        if sig_path and os.path.exists(sig_path):
+            from redcap_api_client import import_file
+            import_file(api_url, token, record_id, "consent_signature", sig_path)
 
         if not _verify_redcap_insert(api_url, token, guid, payload):
             return False
@@ -1029,10 +1056,99 @@ def _scrub_local_pii(guid: str, guid_db=None, participants_db=None) -> None:
         participant["newsletter_emails"] = []
         participant["newsletter_phones"] = []
         participant["contact_updates"] = []
+        participant["consent_name"] = ""
+
+    try:
+        if os.path.exists(signature_path(guid)):
+            os.remove(signature_path(guid))
+    except Exception:
+        pass
 
     export_guid_csv(guid_db)
     export_participants_csv(participants_db)
     export_deidentified_visits(participants_db)
+
+
+def signature_path(guid: str) -> str:
+    return os.path.join(SIGNATURE_DIR, f"{guid}.png")
+
+
+def save_signature(guid: str, data_url: str) -> bool:
+    """Persist a data:image/png;base64 signature for a GUID. Returns True if written."""
+    if not data_url:
+        return False
+    try:
+        b64 = data_url.split(",", 1)[1] if "," in data_url else data_url
+        raw = base64.b64decode(b64)
+        if not raw.startswith(b"\x89PNG"):
+            return False
+        os.makedirs(SIGNATURE_DIR, exist_ok=True)
+        with open(signature_path(guid), "wb") as f:
+            f.write(raw)
+        return True
+    except Exception:
+        return False
+
+
+def _redcap_has_consent(guid: str) -> bool:
+    """
+    Ask REDCap whether this record already has the consent fields filled.
+    Only runs when autopush is enabled; any failure means "unknown" (False).
+    """
+    if os.environ.get("TUBRIC_REDCAP_AUTOPUSH", "").strip().lower() not in ("1", "true", "yes"):
+        return False
+    try:
+        if REDCAP_BUILD_DIR not in sys.path:
+            sys.path.insert(0, REDCAP_BUILD_DIR)
+        from redcap_api_client import read_token, export_records
+        token = read_token(REDCAP_DEFAULT_TOKEN_PATH)
+        raw = export_records(
+            _read_redcap_api_url(), token,
+            fields=["sub_id", "consent_date", "consent_name", "consent_signature"],
+            filter_logic=f"[sub_id] = '{guid}'", export_repeating=False,
+        )
+        for row in json.loads(raw) or []:
+            if row.get("consent_date") or row.get("consent_name") or row.get("consent_signature"):
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def lookup_person(state, guid_db=None, participants_db=None):
+    """
+    Sign-in step: does this person already exist, and have they already signed
+    the participant-pool consent? Consent is known locally via
+    consent_signed_at (kept through the PII scrub) and confirmed against
+    REDCap when the API is reachable.
+    Returns {"matched": bool, "guid": str, "consented": bool}.
+    """
+    if guid_db is None or participants_db is None:
+        maybe_migrate_legacy_to_csv()
+        guid_db = load_guid_db()
+        participants_db = load_participants_db()
+    s = state
+    existing = find_person(
+        guid_db["people"],
+        dob=s.get("dob", ""),
+        first_name=s.get("first_name", ""),
+        last_name=s.get("last_name", ""),
+        email=s.get("email", ""),
+        phone=s.get("phone", ""),
+    )
+    if not existing:
+        return {"matched": False, "guid": "", "consented": False}
+    guid = existing["guid"]
+    consented = bool(existing.get("consent_signed_at"))
+    if not consented:
+        participant = find_participant_by_guid(participants_db["participants"], guid)
+        consented = bool(participant and participant.get("consent_signed_at"))
+    if not consented:
+        consented = _redcap_has_consent(guid)
+        if consented:
+            existing["consent_signed_at"] = existing.get("consent_signed_at") or now_iso()
+            export_guid_csv(guid_db)
+    return {"matched": True, "guid": guid, "consented": consented}
 
 
 def submit_checkin(state, guid_db=None, participants_db=None):
@@ -1053,6 +1169,16 @@ def submit_checkin(state, guid_db=None, participants_db=None):
     newsletter_email = s.get("newsletter_email", "")
     newsletter_phone = s.get("newsletter_phone", "")
     newsletter_pref = s.get("newsletter_pref", "")
+
+    consent_name = (s.get("consent_name", "") or "").strip()
+    consent_date = (s.get("consent_date", "") or "").strip()
+    consent_signature = s.get("consent_signature", "") or ""
+    signing_now = bool(consent_name and consent_signature)
+
+    # Joining the pool and agreeing to be contacted are one consent. Anyone
+    # who signs now, or signed before, is contactable.
+    if signing_now:
+        s["consent_contact"] = "Yes"
 
     # No contact consent means no contact information is stored, regardless
     # of what a front end sent. Matching then rests on name + DOB.
@@ -1086,6 +1212,9 @@ def submit_checkin(state, guid_db=None, participants_db=None):
         guid = existing["guid"]
         existing["last_seen_at"] = visit_datetime
         record_identity(existing, dob, s.get("first_name", ""), s.get("last_name", ""), email, phone)
+        if signing_now:
+            existing["consent_date"] = consent_date or visit_date
+            existing["consent_signed_at"] = visit_datetime
 
         participant = find_participant_by_guid(participants_db["participants"], guid)
         if participant:
@@ -1172,6 +1301,9 @@ def submit_checkin(state, guid_db=None, participants_db=None):
             "contact_updates": [],
         }
         record_identity(person, dob, s.get("first_name", ""), s.get("last_name", ""), email, phone)
+        if signing_now:
+            person["consent_date"] = consent_date or visit_date
+            person["consent_signed_at"] = visit_datetime
         if newsletter_email:
             add_newsletter_email(person, newsletter_email, 1, visit_datetime)
         if newsletter_phone:
@@ -1205,6 +1337,13 @@ def submit_checkin(state, guid_db=None, participants_db=None):
             participant["newsletter_pref"] = newsletter_pref
         participants_db["participants"].append(participant)
         action = "created_new"
+
+    if signing_now:
+        participant["consent_name"] = consent_name
+        participant["consent_date"] = consent_date or visit_date
+        participant["consent_signed_at"] = visit_datetime
+        participant["consent_contact"] = "Yes"
+        save_signature(guid, consent_signature)
 
     export_guid_csv(guid_db)
     export_participants_csv(participants_db)

@@ -44,7 +44,7 @@ function createWindow() {
   win.loadFile(path.join(__dirname, "index.html"));
 }
 
-ipcMain.handle("submit-checkin", async (_event, payload) => {
+function runBackend(payload) {
   return new Promise((resolve, reject) => {
     const proc = spawn(PYTHON_BIN, [BACKEND_SCRIPT], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -56,6 +56,7 @@ ipcMain.handle("submit-checkin", async (_event, payload) => {
     proc.stdout.on("data", (d) => (stdout += d.toString()));
     proc.stderr.on("data", (d) => (stderr += d.toString()));
 
+    proc.on("error", (err) => reject(err));
     proc.on("close", (code) => {
       if (code !== 0) {
         return reject(new Error(stderr || `Backend exited with code ${code}`));
@@ -70,7 +71,15 @@ ipcMain.handle("submit-checkin", async (_event, payload) => {
     proc.stdin.write(JSON.stringify(payload || {}));
     proc.stdin.end();
   });
-});
+}
+
+ipcMain.handle("lookup-checkin", (_event, payload) =>
+  runBackend({ ...(payload || {}), action: "lookup" })
+);
+
+ipcMain.handle("submit-checkin", (_event, payload) =>
+  runBackend({ ...(payload || {}), action: "submit" })
+);
 
 app.whenReady().then(createWindow);
 

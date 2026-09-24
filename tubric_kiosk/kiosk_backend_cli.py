@@ -13,6 +13,11 @@ def main():
         sys.stderr.write(f"Invalid JSON input: {exc}\n")
         sys.exit(1)
 
+    mode = (payload.pop("action", "") or "submit").lower()
+    if mode == "lookup":
+        sys.stdout.write(json.dumps(survey.lookup_person(payload)))
+        return
+
     guid, action, _, _ = survey.submit_checkin(payload)
     sys.stdout.write(json.dumps({"guid": guid, "action": action}))
 

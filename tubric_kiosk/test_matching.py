@@ -223,6 +223,51 @@ class SubmitFlowTests(unittest.TestCase):
         self.assertEqual((g1, "matched_existing"), (g3, a3))
         self.assertEqual(survey.load_guid_db()["people"][0]["primary_email"], "maria@example.com")
 
+    def test_lookup_and_consent_flow(self):
+        # Unknown person: not matched, must consent.
+        r = survey.lookup_person(state())
+        self.assertEqual(r, {"matched": False, "guid": "", "consented": False})
+
+        # Sign in + sign consent (1x1 transparent PNG).
+        png = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+               "AAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+        g1, a1 = checkin(consent_contact=None, consent_name="Maria Gonzalez",
+                         consent_date="2026-09-24", consent_signature=png)
+        self.assertEqual(a1, "created_new")
+        self.assertTrue(os.path.exists(survey.signature_path(g1)))
+        parts = survey.load_participants_db()["participants"]
+        self.assertEqual(parts[0]["consent_name"], "Maria Gonzalez")
+        self.assertEqual(parts[0]["consent_date"], "2026-09-24")
+        self.assertTrue(parts[0]["consent_signed_at"])
+        self.assertEqual(parts[0]["consent_contact"], "Yes")
+        self.assertEqual(parts[0]["email"], "maria@example.com")
+
+        # Returning: matched and already consented -> UI skips the consent form.
+        r = survey.lookup_person(state())
+        self.assertEqual(r, {"matched": True, "guid": g1, "consented": True})
+        r = survey.lookup_person(state(first_name="MARIA", dob="2010-03-15"))
+        self.assertEqual((r["matched"], r["consented"]), (True, True))
+
+        # Payload carries consent fields and the signature path for REDCap.
+        guid_db = survey.load_guid_db(); pdb = survey.load_participants_db()
+        payload = survey._build_redcap_payload(g1, guid_db["people"][0], pdb["participants"][0],
+                                               pdb["participants"][0]["visits"][0], "")
+        self.assertEqual(payload["participant"]["consent_name"], "Maria Gonzalez")
+        self.assertEqual(payload["participant"]["consent_date"], "2026-09-24")
+        self.assertEqual(payload["signature_path"], survey.signature_path(g1))
+
+        # Scrub keeps the consent flag but drops the name and the signature file.
+        survey._scrub_local_pii(g1, guid_db, pdb)
+        self.assertFalse(os.path.exists(survey.signature_path(g1)))
+        parts = survey.load_participants_db()["participants"]
+        self.assertEqual(parts[0]["consent_name"], "")
+        self.assertTrue(parts[0]["consent_signed_at"])
+        r = survey.lookup_person(state())
+        self.assertEqual(r, {"matched": True, "guid": g1, "consented": True})
+
+    def test_signature_rejects_non_png(self):
+        self.assertFalse(survey.save_signature("abc", "data:image/png;base64,aGVsbG8="))
+
     def test_autopush_disabled_without_env(self):
         self.assertFalse(survey.auto_push_redcap({"guid": "x"}))
 
