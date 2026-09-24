@@ -2,9 +2,23 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 
-const PYTHON_BIN =
-  process.env.TUBRIC_PYTHON ||
-  path.join(__dirname, "..", "tubric_kiosk", ".venv", "bin", "python");
+const fs = require("fs");
+
+// Prefer TUBRIC_PYTHON, then the project venv, then whatever python3 is on
+// PATH. The venv python is a symlink that can dangle if its base install
+// moves; fs.existsSync follows symlinks so a dangling one is skipped.
+function resolvePython() {
+  const candidates = [
+    process.env.TUBRIC_PYTHON,
+    path.join(__dirname, "..", "tubric_kiosk", ".venv", "bin", "python"),
+  ].filter(Boolean);
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return "python3";
+}
+
+const PYTHON_BIN = resolvePython();
 
 const BACKEND_SCRIPT = path.join(
   __dirname,

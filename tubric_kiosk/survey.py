@@ -7,9 +7,12 @@ import uuid
 import csv
 import json
 import sys
+import hashlib
+import secrets
+import unicodedata
 
-APP_TITLE = "TUBRIC Check-In"
-SITE_NAME = "TUBRIC"
+APP_TITLE = "Temple Participant Pool"
+SITE_NAME = "the Temple Participant Pool"
 
 # Visual Theme
 COLORS = {
@@ -38,12 +41,18 @@ FONT_SMALL = ("Helvetica Neue", 12)
 LEGACY_DATA_FILE = os.path.join(os.path.dirname(__file__), "tubric_profiles.json")
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # /.../TUBRIC/Database
-PRIVATE_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "ID-data"))     # /.../TUBRIC/ID-data
+PRIVATE_DIR = os.environ.get("TUBRIC_PRIVATE_DIR") or os.path.abspath(os.path.join(BASE_DIR, "..", "ID-data"))  # /.../TUBRIC/ID-data
 LOGO_PATH = os.path.join(BASE_DIR, "sourcephoto", "logo.png")
 SHOW_LOGO = False
 
 FULL_EXPORT_DIR = os.path.join(PRIVATE_DIR, "db_exports")
-DEID_EXPORT_DIR = os.path.join(BASE_DIR, "db_exports")
+DEID_EXPORT_DIR = os.environ.get("TUBRIC_DEID_DIR") or os.path.join(BASE_DIR, "db_exports")
+
+# Salt for the hashed identity index. Lives with the private data, never in the repo.
+IDENTITY_SALT_PATH = os.path.join(PRIVATE_DIR, "identity_salt.txt")
+
+# Matching threshold (see find_person for the scoring table).
+MATCH_THRESHOLD = 4
 
 GUID_PEOPLE_CSV = os.path.join(FULL_EXPORT_DIR, "guid_people.csv")
 GUID_CONTACT_UPDATES_CSV = os.path.join(FULL_EXPORT_DIR, "guid_contact_updates.csv")
@@ -87,10 +96,34 @@ def normalize_phone(s: str) -> str:
     return digits if len(digits) == 10 else ""
 
 
+_NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
+
+
+def _name_tokens(s: str):
+    """
+    Lowercase, strip accents, split on whitespace and hyphens, drop punctuation
+    and generational suffixes. "Mary-Ann O'Brien Jr." -> ["mary", "ann", "obrien"].
+    """
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    s = re.sub(r"[-_/]+", " ", s)
+    tokens = [re.sub(r"[^a-z0-9]", "", t) for t in s.split()]
+    return [t for t in tokens if t and t not in _NAME_SUFFIXES]
+
+
 def normalize_name(s: str) -> str:
-    s = (s or "").strip().lower()
-    s = re.sub(r"\s+", " ", s)
-    return s
+    """
+    Canonical comparison form: accents, case, spaces and punctuation removed.
+    "Mary-Ann", "Mary Ann", "MARYANN" and "Maryann" all -> "maryann".
+    """
+    return "".join(_name_tokens(s))
+
+
+def normalize_first_token(s: str) -> str:
+    """First word of a first name ("Mary Ann" -> "mary") so a middle name
+    typed into the first-name box still gets credit."""
+    tokens = _name_tokens(s)
+    return tokens[0] if tokens else ""
 
 
 def normalize_dob(s: str) -> str:
@@ -109,6 +142,116 @@ def normalize_dob(s: str) -> str:
         return dt.strftime("%Y-%m-%d")
     except ValueError:
         return ""
+
+
+# ----------------------------
+# Hashed identity index
+# ----------------------------
+# Plaintext PII is scrubbed locally once a check-in is verified in REDCap.
+# Matching therefore runs on salted SHA-256 hashes of the normalized identity
+# fields, which survive the scrub. The salt lives in the private data folder.
+_IDENTITY_SALT = None
+
+
+def _identity_salt() -> str:
+    global _IDENTITY_SALT
+    if _IDENTITY_SALT:
+        return _IDENTITY_SALT
+    try:
+        if os.path.exists(IDENTITY_SALT_PATH):
+            with open(IDENTITY_SALT_PATH, "r", encoding="utf-8") as f:
+                value = f.read().strip()
+            if value:
+                _IDENTITY_SALT = value
+                return value
+        value = secrets.token_hex(32)
+        os.makedirs(os.path.dirname(IDENTITY_SALT_PATH), exist_ok=True)
+        with open(IDENTITY_SALT_PATH, "w", encoding="utf-8") as f:
+            f.write(value + "\n")
+        _IDENTITY_SALT = value
+        return value
+    except Exception:
+        # Fall back to an in-process salt so the kiosk keeps working; hashes
+        # written this way won't match across restarts, which only degrades
+        # to "new participant" rather than crashing.
+        _IDENTITY_SALT = _IDENTITY_SALT or secrets.token_hex(32)
+        return _IDENTITY_SALT
+
+
+def identity_hash(kind: str, value: str) -> str:
+    if not value:
+        return ""
+    msg = f"{_identity_salt()}:{kind}:{value}".encode("utf-8")
+    return hashlib.sha256(msg).hexdigest()
+
+
+def identity_keys(dob: str, first_name: str, last_name: str, email: str = "", phone: str = "") -> dict:
+    """
+    Compute the hashed identity keys for one set of entered values.
+    first_hashes covers both the whole first name and its first token so
+    "Mary Ann" / "Mary-Ann" / "Maryann" cross-match.
+    """
+    first_full = normalize_name(first_name)
+    first_tok = normalize_first_token(first_name)
+    first_hashes = []
+    for v in (first_full, first_tok):
+        h = identity_hash("first", v)
+        if h and h not in first_hashes:
+            first_hashes.append(h)
+    email_n = normalize_email(email)
+    phone_n = normalize_phone(phone)
+    return {
+        "dob_hash": identity_hash("dob", dob or ""),
+        "first_hashes": first_hashes,
+        "last_hash": identity_hash("last", normalize_name(last_name)),
+        "email_hashes": [identity_hash("email", email_n)] if email_n else [],
+        "phone_hashes": [identity_hash("phone", phone_n)] if phone_n else [],
+    }
+
+
+def _merge_unique(target: list, values) -> None:
+    for v in values or []:
+        if v and v not in target:
+            target.append(v)
+
+
+def record_identity(person: dict, dob: str, first_name: str, last_name: str, email: str = "", phone: str = "") -> None:
+    """
+    Add the hashes for the values entered at this check-in to a person's
+    identity index. Idempotent. Never removes a hash, so a person whose
+    name was mistyped once still matches on the correct spelling later.
+    """
+    keys = identity_keys(dob, first_name, last_name, email, phone)
+    if keys["dob_hash"] and not person.get("dob_hash"):
+        person["dob_hash"] = keys["dob_hash"]
+    if keys["last_hash"] and not person.get("last_hash"):
+        person["last_hash"] = keys["last_hash"]
+    _merge_unique(person.setdefault("first_hashes", []), keys["first_hashes"])
+    _merge_unique(person.setdefault("email_hashes", []), keys["email_hashes"])
+    _merge_unique(person.setdefault("phone_hashes", []), keys["phone_hashes"])
+
+
+def ensure_identity_hashes(person: dict) -> None:
+    """
+    Backfill hashes from plaintext for rows written before the identity index
+    existed. Rows that were already scrubbed and have no hashes cannot be
+    recovered and will simply never match.
+    """
+    if not (person.get("dob") or person.get("first_name") or person.get("last_name")
+            or person.get("primary_email") or person.get("primary_phone")):
+        return
+    record_identity(
+        person,
+        person.get("dob", ""),
+        person.get("first_name", ""),
+        person.get("last_name", ""),
+        person.get("primary_email", ""),
+        person.get("primary_phone", ""),
+    )
+    for e in person.get("secondary_emails", []):
+        _merge_unique(person["email_hashes"], [identity_hash("email", normalize_email(e))])
+    for p in person.get("secondary_phones", []):
+        _merge_unique(person["phone_hashes"], [identity_hash("phone", normalize_phone(p))])
 
 
 def read_csv(path):
@@ -194,8 +337,15 @@ def load_guid_db():
                 "created_at": p.get("created_at", ""),
                 "last_seen_at": p.get("last_seen_at", ""),
                 "contact_updates": contact_by_guid.get(guid, []),
+                "dob_hash": p.get("dob_hash", "") or "",
+                "first_hashes": _split_list(p.get("first_hashes", "")),
+                "last_hash": p.get("last_hash", "") or "",
+                "email_hashes": _split_list(p.get("email_hashes", "")),
+                "phone_hashes": _split_list(p.get("phone_hashes", "")),
             }
         )
+    for person in people:
+        ensure_identity_hashes(person)
     return {"people": people}
 
 
@@ -349,6 +499,11 @@ def export_guid_csv(guid_db):
                 "newsletter_pref": p.get("newsletter_pref", ""),
                 "created_at": p.get("created_at", ""),
                 "last_seen_at": p.get("last_seen_at", ""),
+                "dob_hash": p.get("dob_hash", ""),
+                "first_hashes": "|".join(p.get("first_hashes", [])),
+                "last_hash": p.get("last_hash", ""),
+                "email_hashes": "|".join(p.get("email_hashes", [])),
+                "phone_hashes": "|".join(p.get("phone_hashes", [])),
             }
         )
 
@@ -380,6 +535,11 @@ def export_guid_csv(guid_db):
             "newsletter_pref",
             "created_at",
             "last_seen_at",
+            "dob_hash",
+            "first_hashes",
+            "last_hash",
+            "email_hashes",
+            "phone_hashes",
         ],
         people_rows,
     )
@@ -514,7 +674,10 @@ def auto_push_deidentified():
     """
     Pushes de-identified CSV to the Git repo at BASE_DIR.
     Safe to ignore failures (e.g., no remote, auth not set).
+    Disable with TUBRIC_GIT_AUTOPUSH=0.
     """
+    if os.environ.get("TUBRIC_GIT_AUTOPUSH", "1").strip().lower() in ("0", "false", "no"):
+        return
     try:
         import subprocess
         script = os.path.join(os.path.dirname(__file__), "push_deidentified_to_git.py")
@@ -632,7 +795,10 @@ def auto_push_redcap(payload, guid_db=None, participants_db=None):
     """
     Push a single check-in to REDCap if autopush is enabled.
     If push + verification succeed, scrub local PII and keep GUID + visits.
+    Only runs when TUBRIC_REDCAP_AUTOPUSH is set (the launcher scripts set it).
     """
+    if os.environ.get("TUBRIC_REDCAP_AUTOPUSH", "").strip().lower() not in ("1", "true", "yes"):
+        return False
     api_url = _read_redcap_api_url()
     if not api_url:
         return False
@@ -824,6 +990,11 @@ def _read_redcap_report_id() -> str:
 
 
 def _scrub_local_pii(guid: str, guid_db=None, participants_db=None) -> None:
+    """
+    Blank plaintext PII for one GUID. The hashed identity index (dob_hash,
+    first_hashes, last_hash, email_hashes, phone_hashes) is deliberately kept
+    so the person still matches on their next visit.
+    """
     if guid_db is None or participants_db is None:
         try:
             guid_db = load_guid_db()
@@ -909,6 +1080,7 @@ def submit_checkin(state, guid_db=None, participants_db=None):
     if existing:
         guid = existing["guid"]
         existing["last_seen_at"] = visit_datetime
+        record_identity(existing, dob, s.get("first_name", ""), s.get("last_name", ""), email, phone)
 
         participant = find_participant_by_guid(participants_db["participants"], guid)
         if participant:
@@ -929,54 +1101,54 @@ def submit_checkin(state, guid_db=None, participants_db=None):
             elif normalize_phone(phone) != normalize_phone(existing.get("primary_phone", "")):
                 add_secondary_phone(existing, phone, visit_number, visit_datetime)
 
-            if participant:
-                if email:
-                    if not participant.get("email"):
-                        participant["email"] = normalize_email(email)
-                    elif normalize_email(email) != normalize_email(participant.get("email", "")):
-                        add_secondary_email(participant, email, visit_number, visit_datetime)
+        if participant:
+            if email:
+                if not participant.get("email"):
+                    participant["email"] = normalize_email(email)
+                elif normalize_email(email) != normalize_email(participant.get("email", "")):
+                    add_secondary_email(participant, email, visit_number, visit_datetime)
 
-                if phone:
-                    if not participant.get("phone"):
-                        participant["phone"] = normalize_phone(phone)
-                    elif normalize_phone(phone) != normalize_phone(participant.get("phone", "")):
-                        add_secondary_phone(participant, phone, visit_number, visit_datetime)
+            if phone:
+                if not participant.get("phone"):
+                    participant["phone"] = normalize_phone(phone)
+                elif normalize_phone(phone) != normalize_phone(participant.get("phone", "")):
+                    add_secondary_phone(participant, phone, visit_number, visit_datetime)
 
-                if newsletter_email:
-                    add_newsletter_email(participant, newsletter_email, visit_number, visit_datetime)
-                if newsletter_phone:
-                    add_newsletter_phone(participant, newsletter_phone, visit_number, visit_datetime)
-                if newsletter_pref:
-                    participant["newsletter_pref"] = newsletter_pref
+            if newsletter_email:
+                add_newsletter_email(participant, newsletter_email, visit_number, visit_datetime)
+            if newsletter_phone:
+                add_newsletter_phone(participant, newsletter_phone, visit_number, visit_datetime)
+            if newsletter_pref:
+                participant["newsletter_pref"] = newsletter_pref
 
-                visit["visit_number"] = visit_number
-                participant.setdefault("visits", []).append(visit)
-            else:
-                visit["visit_number"] = 1
-                participant = {
+            visit["visit_number"] = visit_number
+            participant.setdefault("visits", []).append(visit)
+        else:
+            visit["visit_number"] = 1
+            participant = {
                 "guid": guid,
                 "first_name": s.get("first_name", "").strip(),
                 "last_name": s.get("last_name", "").strip(),
                 "dob": dob,
                 "email": normalize_email(email),
                 "phone": normalize_phone(phone),
-                    "secondary_emails": [],
-                    "secondary_phones": [],
-                    "newsletter_emails": [],
-                    "newsletter_phones": [],
-                    "contact_updates": [],
-                    "consent_contact": s.get("consent_contact"),
-                    "created_at": now_iso(),
-                    "visits": [visit],
-                }
-                if newsletter_email:
-                    add_newsletter_email(participant, newsletter_email, visit_number, visit_datetime)
-                if newsletter_phone:
-                    add_newsletter_phone(participant, newsletter_phone, visit_number, visit_datetime)
-                if newsletter_pref:
-                    participant["newsletter_pref"] = newsletter_pref
-                participants_db["participants"].append(participant)
-            action = "matched_existing"
+                "secondary_emails": [],
+                "secondary_phones": [],
+                "newsletter_emails": [],
+                "newsletter_phones": [],
+                "contact_updates": [],
+                "consent_contact": s.get("consent_contact"),
+                "created_at": now_iso(),
+                "visits": [visit],
+            }
+            if newsletter_email:
+                add_newsletter_email(participant, newsletter_email, visit_number, visit_datetime)
+            if newsletter_phone:
+                add_newsletter_phone(participant, newsletter_phone, visit_number, visit_datetime)
+            if newsletter_pref:
+                participant["newsletter_pref"] = newsletter_pref
+            participants_db["participants"].append(participant)
+        action = "matched_existing"
     else:
         guid = new_guid()
         person = {
@@ -994,6 +1166,7 @@ def submit_checkin(state, guid_db=None, participants_db=None):
             "last_seen_at": visit_datetime,
             "contact_updates": [],
         }
+        record_identity(person, dob, s.get("first_name", ""), s.get("last_name", ""), email, phone)
         if newsletter_email:
             add_newsletter_email(person, newsletter_email, 1, visit_datetime)
         if newsletter_phone:
@@ -1040,76 +1213,72 @@ def submit_checkin(state, guid_db=None, participants_db=None):
     return guid, action, guid_db, participants_db
 
 
-def names_match(p, first_name: str, last_name: str) -> bool:
-    return (
-        normalize_name(p.get("first_name", "")) == normalize_name(first_name)
-        and normalize_name(p.get("last_name", "")) == normalize_name(last_name)
-    )
+def score_person(person: dict, keys: dict) -> int:
+    """
+    Score one stored person against the hashed keys of the entered values.
 
+      +2  date of birth matches
+      +1  first name matches (whole name or first token, any spelling seen before)
+      +1  last name matches
+      +1  email matches any email ever seen for this person
+      +1  phone matches any phone ever seen for this person
+      -2  first name is known on both sides and does not match
 
-def _email_matches(person, email_n: str) -> bool:
-    if not email_n:
-        return False
-    primary = normalize_email(person.get("primary_email", ""))
-    if primary and primary == email_n:
-        return True
-    for e in person.get("secondary_emails", []):
-        if normalize_email(e) == email_n:
-            return True
-    return False
+    The first-name penalty is what keeps twins apart: they share DOB, last
+    name, and usually a guardian's email and phone, which would otherwise
+    reach the threshold on their own.
+    """
+    score = 0
+    if keys["dob_hash"] and keys["dob_hash"] == person.get("dob_hash", ""):
+        score += 2
 
+    stored_first = person.get("first_hashes", []) or []
+    entered_first = keys["first_hashes"]
+    if entered_first and stored_first:
+        if any(h in stored_first for h in entered_first):
+            score += 1
+        else:
+            score -= 2
 
-def _phone_matches(person, phone_n: str) -> bool:
-    if not phone_n:
-        return False
-    primary = normalize_phone(person.get("primary_phone", ""))
-    if primary and primary == phone_n:
-        return True
-    for p in person.get("secondary_phones", []):
-        if normalize_phone(p) == phone_n:
-            return True
-    return False
+    if keys["last_hash"] and keys["last_hash"] == person.get("last_hash", ""):
+        score += 1
+
+    if any(h in (person.get("email_hashes", []) or []) for h in keys["email_hashes"]):
+        score += 1
+    if any(h in (person.get("phone_hashes", []) or []) for h in keys["phone_hashes"]):
+        score += 1
+    return score
 
 
 def find_person(people, dob, first_name, last_name, email, phone):
     """
-    DOB-first matching:
-      - Step 1: candidates = exact DOB match (canonical YYYY-MM-DD)
-      - Step 2: confirm identity using name/email/phone
-      - Accept the best candidate only if confirmation score >= 2
+    Weighted matching over the hashed identity index (see score_person).
+    No single field is a hard gate, so one mistyped DOB digit or a hyphen in
+    a name no longer creates a duplicate participant, while an unrelated
+    person who merely shares a DOB is never merged.
 
-    Scoring:
-      +2 name match (first+last)
-      +1 email match
-      +1 phone match
+    Worked examples against the threshold of 4:
+      exact name + DOB                          2+1+1     = 4  match
+      DOB typo, name + email + phone            1+1+1+1   = 4  match
+      guardian typed own contact, name + DOB    2+1+1     = 4  match
+      married name change, DOB + first + email  2+1+1     = 4  match
+      twin: DOB + last + email + phone, first differs  2-2+1+1+1 = 3  no match
+      same DOB, different person                2         = 2  no match
+
+    Ties at or above the threshold go to the most recently seen person.
     """
-    email_n = normalize_email(email)
-    phone_n = normalize_phone(phone)  # will be "" if invalid (we validate earlier)
-
-    candidates = [p for p in people if p.get("dob") == dob]
-    if not candidates:
-        return None
-
+    keys = identity_keys(dob, first_name, last_name, email, phone)
     best = None
-    best_score = -1
-
-    for p in candidates:
-        score = 0
-
-        if names_match(p, first_name, last_name):
-            score += 2
-
-        if _email_matches(p, email_n):
-            score += 1
-
-        if _phone_matches(p, phone_n):
-            score += 1
-
-        if score > best_score:
+    best_score = MATCH_THRESHOLD - 1
+    for p in people:
+        score = score_person(p, keys)
+        if score > best_score or (
+            score == best_score and best is not None
+            and (p.get("last_seen_at", "") or "") > (best.get("last_seen_at", "") or "")
+        ):
             best_score = score
             best = p
-
-    return best if best_score >= 2 else None
+    return best
 
 
 def new_guid():
@@ -1294,7 +1463,7 @@ def add_brand_header(parent, controller, subtitle=None):
 
     tk.Label(
         header,
-        text="TUBRIC Check-In",
+        text="Temple Participant Pool",
         bg=COLORS['card'],
         fg=COLORS['text'],
         font=FONT_TITLE,
@@ -1537,7 +1706,7 @@ class ParticipantInfoFrame(BaseFrame):
 
         self.sub = tk.Label(
             card,
-            text="Please enter your information below.",
+            text="Please enter your full legal name and date of birth\nexactly as you did on previous visits.",
             bg=COLORS['card'],
             fg=COLORS['text_light'],
             font=FONT_BODY,
@@ -1581,8 +1750,8 @@ class ParticipantInfoFrame(BaseFrame):
             
             return ent
 
-        self.first = field(0, "First Name")
-        self.last  = field(1, "Last Name")
+        self.first = field(0, "Legal First Name", "as on previous visits")
+        self.last  = field(1, "Legal Last Name", "as on previous visits")
         self.dob   = field(2, "Date of Birth", "MM-DD-YYYY")
         self.email = field(3, "Email Address")
         self.phone = field(4, "Phone Number", "555-555-5555")
@@ -1669,10 +1838,12 @@ class ParticipantInfoFrame(BaseFrame):
         role = self.controller.state.get("is_guardian")
         if role == "guardian":
             self.sub.config(
-                text="You indicated you are a parent/guardian.\nPlease enter the PARTICIPANT'S information below."
+                text="You indicated you are a parent/guardian.\nEnter the PARTICIPANT'S full legal name and date of birth,\nexactly as on previous visits."
             )
         else:
-            self.sub.config(text="Please enter your information below.")
+            self.sub.config(
+                text="Please enter your full legal name and date of birth\nexactly as you did on previous visits."
+            )
 
         for ent in (self.first, self.last, self.dob, self.email, self.phone):
             ent.delete(0, tk.END)
@@ -1686,7 +1857,7 @@ class ParticipantInfoFrame(BaseFrame):
         phone = self.phone.get().strip()
 
         if not first or not last:
-            messagebox.showinfo("Missing Information", "Please enter the participant's first and last name.")
+            messagebox.showinfo("Missing Information", "Please enter the participant's full legal first and last name.")
             return
 
         dob = normalize_dob(dob_raw)
@@ -1742,7 +1913,7 @@ class StudyCodeFrame(BaseFrame):
 
         tk.Label(
             card,
-            text="TUBRIC Study Code",
+            text="Study Code",
             bg=COLORS['card'],
             fg=COLORS['text'],
             font=FONT_SUBTITLE,
@@ -1783,7 +1954,7 @@ class StudyCodeFrame(BaseFrame):
         if not code:
             messagebox.showinfo(
                 "Study Code Required",
-                "Please enter the TUBRIC Study Code\n(ask the research assistant)",
+                "Please enter the Study Code\n(ask the research assistant)",
             )
             return
 

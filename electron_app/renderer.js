@@ -65,9 +65,10 @@ function setInfoSubtitle() {
   const sub = document.getElementById("info-subtitle");
   if (state.is_guardian === "guardian") {
     sub.textContent =
-      "You indicated you are a parent/guardian. Please enter the participant's information below. If the participant does not have an email or phone, you may enter your own.";
+      "You indicated you are a parent/guardian. Enter the PARTICIPANT'S full legal name and date of birth exactly as on previous visits. If the participant does not have an email or phone, you may enter your own.";
   } else {
-    sub.textContent = "Please enter your information below.";
+    sub.textContent =
+      "Please enter your full legal name and date of birth exactly as you did on previous visits.";
   }
 }
 
@@ -152,7 +153,7 @@ document.getElementById("info-continue").addEventListener("click", () => {
   const phone = document.getElementById("phone").value.trim();
 
   if (!first || !last) {
-    error.textContent = "Please enter the participant's first and last name.";
+    error.textContent = "Please enter the participant's full legal first and last name.";
     return;
   }
   if (!isValidDob(dob)) {
@@ -243,7 +244,7 @@ document.getElementById("finish").addEventListener("click", async () => {
   error.textContent = "";
   const code = document.getElementById("studyCode").value.trim();
   if (!code) {
-    error.textContent = "Please enter the TUBRIC Study Code.";
+    error.textContent = "Please enter the Study Code.";
     return;
   }
 
