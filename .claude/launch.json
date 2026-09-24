@@ -4,8 +4,26 @@
     {
       "name": "kiosk-ui-preview",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "electron_app"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "electron_app"
+      ],
       "port": 8765
+    },
+    {
+      "name": "demo-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8766",
+        "--directory",
+        "demo"
+      ],
+      "port": 8766
     }
   ]
 }

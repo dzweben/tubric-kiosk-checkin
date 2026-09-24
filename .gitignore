@@ -87,3 +87,6 @@ db_exports/*
 
 # Extra safety: avoid any CSVs inside app folder (PHI risk)
 tubric_kiosk/**/*.csv
+
+# Built static demo (published to gh-pages by publish_demo.sh)
+demo/
