@@ -75,13 +75,12 @@
     },
   };
 
-  // Demo badge with a reset control.
-  const badge = document.createElement("div");
-  badge.id = "demo-badge";
-  badge.innerHTML = 'DEMO &middot; nothing is sent anywhere <button type="button" id="demo-reset">Reset demo data</button>';
-  document.body.appendChild(badge);
-  document.getElementById("demo-reset").addEventListener("click", () => {
-    localStorage.removeItem(KEY);
-    window.location.reload();
+  // No visible demo chrome. Hidden reset: Ctrl/Cmd + Shift + X clears the
+  // stored people so the consent form shows again on the next sign-in.
+  window.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "x") {
+      localStorage.removeItem(KEY);
+      window.location.reload();
+    }
   });
 })();
