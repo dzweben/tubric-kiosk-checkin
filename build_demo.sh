@@ -6,6 +6,8 @@ rm -rf demo && mkdir -p demo/consent
 cp electron_app/styles.css electron_app/renderer.js electron_app/demo-backend.js demo/
 cp electron_app/consent/*.pdf demo/consent/
 # Inject the browser stand-in for the backend ahead of the real renderer.
-sed 's#<script src="./renderer.js"></script>#<script src="./demo-backend.js"></script>\n    <script src="./renderer.js"></script>#' electron_app/index.html > demo/index.html
+V=$(date +%s)
+sed -e "s#<script src=\"./renderer.js\"></script>#<script src=\"./demo-backend.js?v=$V\"></script>\n    <script src=\"./renderer.js?v=$V\"></script>#" \
+    -e "s#styles.css?v=[0-9]*#styles.css?v=$V#" electron_app/index.html > demo/index.html
 touch demo/.nojekyll
 echo "demo built in ./demo"
